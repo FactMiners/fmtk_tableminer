@@ -26,8 +26,8 @@ class Point:
     y: int
 
 
-# Class Fmtk_TableGrid
-class Fmtk_TableGrid(object):
+# Class FmtkTableGrid
+class FmtkTableGrid(object):
     def __init__(self, image, table_spec=None):
         # If image is a filename then open it
         if isinstance(image, str) and os.path.isfile(image):

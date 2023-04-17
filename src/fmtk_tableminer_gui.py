@@ -20,13 +20,13 @@ ocr_TEXT_EDIT = 1005
 nlpx_TEXT_EDIT = 1006
 
 ###########################################################################
-## Class Fmtk_tbl_bboxerGUI
+## Class FmtkTableMinerFrame
 ###########################################################################
 
-class Fmtk_tbl_bboxerGUI ( wx.Frame ):
+class FmtkTableMinerFrame ( wx.Frame ):
 
 	def __init__( self, parent ):
-		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"FMTK Table Boxer Widget", pos = wx.DefaultPosition, size = wx.Size( 1000,1100 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
+		wx.Frame.__init__ ( self, parent, id = wx.ID_ANY, title = u"FMTK TableMiner", pos = wx.DefaultPosition, size = wx.Size( 1000,1100 ), style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL )
 
 		self.SetSizeHints( wx.DefaultSize, wx.DefaultSize )
 
@@ -271,10 +271,10 @@ class Fmtk_tbl_bboxerGUI ( wx.Frame ):
 
 
 ###########################################################################
-## Class Fmtk_tbl_grid_col_label_dlg
+## Class FmtkTableMinerColumnLabelDialog
 ###########################################################################
 
-class Fmtk_tbl_grid_col_label_dlg ( wx.Dialog ):
+class FmtkTableMinerColumnLabelDialog ( wx.Dialog ):
 
 	def __init__( self, parent ):
 		wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"Label Names", pos = wx.DefaultPosition, size = wx.Size( 314,301 ), style = wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER|wx.TAB_TRAVERSAL )

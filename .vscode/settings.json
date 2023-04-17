@@ -1,4 +1,5 @@
 {
     "editor.detectIndentation": true,
-    "editor.indentSize": "tabSize"
+    "editor.indentSize": "tabSize",
+    "python.defaultInterpreterPath": "/opt/homebrew/Caskroom/miniforge/base/envs/fmtk2/bin/pythonw"
 }

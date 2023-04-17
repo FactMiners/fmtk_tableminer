@@ -1,4 +1,23 @@
-# Factminers Toolkit - Table Bounding Box Tool
+# Factminers Toolkit - TableMiner Tool
+#
+# Copyright 2023 Jim Salmons on behalf of the FactMiners.org
+# Digital Humanities project focused on the development of a
+# Ground-Truth Storage format providing an integrated complex
+# document structure and content depiction model for print era
+# commercial magazines.
+#
+# Licensed under the Apache License, Version 2.0 (the "License")
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http: // www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+# express or implied. See the License for the specific language
+# governing permissions and limitations under the License.
+#
 
 import wx
 import json
@@ -8,23 +27,23 @@ import copy
 from PIL import Image, ImageDraw, ImageFont
 import fmtk_rubberband_panel as rbp
 # from wx.lib.scrolledpanel import ScrolledPanel
-from fmtk_tbl_bboxxer_gui import Fmtk_tbl_bboxerGUI
-from fmtk_tbl_bboxxer_gui import Fmtk_tbl_grid_col_label_dlg
-from fmtk_tablegrid import Fmtk_TableGrid  # , BoundingBox
+from fmtk_tableminer_gui import FmtkTableMinerFrame
+from fmtk_tableminer_gui import FmtkTableMinerColumnLabelDialog
+from fmtk_tablegrid import FmtkTableGrid
 
 import wx.lib.inspection
 
-from fmtk_tbl_bboxxer_gui import tb_TBL_BBOX, tb_ROW_SEP, tb_COL_SEP, tb_DEL_SEP, tb_SEL_CELL, ocr_TEXT_EDIT
+from fmtk_tableminer_gui import tb_TBL_BBOX, tb_ROW_SEP, tb_COL_SEP, tb_DEL_SEP, tb_SEL_CELL, ocr_TEXT_EDIT
 
 
-# Class Fmtk_tbl_bboxerApp
-class Fmtk_tbl_bboxerApp(wx.App):
+# Class FmtkTableMinerApp
+class FmtkTableMinerApp(wx.App):
     def OnInit(self):
         if 'wxMac' in wx.PlatformInfo:
             self.max_height = wx.GetDisplaySize().Height  # - 100
         else:
             self.max_height = wx.GetDisplaySize().Height - 50
-        self.frame = Fmtk_tbl_bboxerAppGUI(None)
+        self.frame = FmtkTableMinerGui(None)
         # Add the rubberband panel
         main_sizer = self.frame.appWin_toolbar.GetContainingSizer()
         self.frame.appWin_image = rbp.RubberbandPanel(
@@ -60,14 +79,14 @@ class Fmtk_tbl_bboxerApp(wx.App):
 
         ####
         # Create a TableGrid object
-        self.tbl_grid = Fmtk_TableGrid(self.frame.appWin_image.src_image, None)
+        self.tbl_grid = FmtkTableGrid(self.frame.appWin_image.src_image, None)
         self.tbl_grid.draw_grid()
 
         self.frame.Show()
         return True
 
 
-class Fmtk_tbl_bboxerAppGUI(Fmtk_tbl_bboxerGUI):
+class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     # Toolbar Event handlers when the user clicks on a toolbar button
     def start_table_bbox_mode(self, event):
@@ -473,7 +492,8 @@ class Fmtk_tbl_bboxerAppGUI(Fmtk_tbl_bboxerGUI):
                 self.image_list.append(file)
         # print(self.image_list)
         self.current_image_index = 0
-        current_image = self.imagedir + "/" + self.image_list[self.current_image_index]
+        current_image = self.imagedir + "/" + \
+            self.image_list[self.current_image_index]
         print(current_image)
         self.appWin_image.src_image = Image.open(current_image)
         self.appWin_image.image = self.appWin_image.src_image
@@ -492,9 +512,9 @@ class Fmtk_tbl_bboxerAppGUI(Fmtk_tbl_bboxerGUI):
         event.Skip()
 
 
-class Tbl_grid_column_dlg(Fmtk_tbl_grid_col_label_dlg):
+class FmtkTableMinerColumnLabelDlg(FmtkTableMinerColumnLabelDialog):
     def __init__(self, parent):
-        Fmtk_tbl_grid_col_label_dlg.__init__(self, parent)
+        FmtkTableMinerColumnLabelDialog.__init__(self, parent)
         self.parent = parent
         self.app = self.parent.appWin_image.app
 
@@ -532,7 +552,7 @@ class Tbl_grid_column_dlg(Fmtk_tbl_grid_col_label_dlg):
 
 # Main
 if __name__ == "__main__":
-    app = Fmtk_tbl_bboxerApp(0)
+    app = FmtkTableMinerApp(0)
     # app.SetAppName("Fmtk TableMiner")
     # wx.lib.inspection.InspectionTool().Show()
 
