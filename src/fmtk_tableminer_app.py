@@ -29,6 +29,7 @@ import fmtk_rubberband_panel as rbp
 # from wx.lib.scrolledpanel import ScrolledPanel
 from fmtk_tableminer_gui import FmtkTableMinerFrame
 from fmtk_tableminer_gui import FmtkTableMinerColumnLabelDialog
+from fmtk_tableminer_gui import FmtkTableMinerProjectDialog
 from fmtk_tablegrid import FmtkTableGrid
 
 import wx.lib.inspection
@@ -45,17 +46,56 @@ class FmtkTableMinerApp(wx.App):
             self.max_height = wx.GetDisplaySize().Height - 50
         self.frame = FmtkTableMinerGui(None)
         # Add the rubberband panel
-        main_sizer = self.frame.appWin_toolbar.GetContainingSizer()
-        self.frame.appWin_image = rbp.RubberbandPanel(
+        main_sizer = self.frame.toolbar.GetContainingSizer()
+        self.frame.image_panel = rbp.RubberbandPanel(
             self.frame, self, wx.ID_ANY)
-        main_sizer.Insert(1, self.frame.appWin_image, 1, wx.EXPAND | wx.LEFT)
-        self.frame.appWin_image.task_profile = "no_task"
+        main_sizer.Insert(1, self.frame.image_panel, 1, wx.EXPAND | wx.LEFT)
+        self.frame.image_panel.task_profile = "no_task"
         # Set a large but arbitary max_pixel size for the panel's image
-        # self.frame.appWin_image.max_pixels = 2000000
-        self.frame.appWin_image.max_pixels = 0
-        self.frame.appWin_image.img_scale = 1.0
+        # self.frame.image_panel.max_pixels = 2000000
+        self.frame.image_panel.max_pixels = 0
+        self.frame.image_panel.img_scale = 1.0
 
-        self.frame.scale_dict = {
+        # self.frame.scale_dict = {
+        #     "10%": 0.1,
+        #     "25%": 0.25,
+        #     "50%": 0.5,
+        #     "75%": 0.75,
+        #     "100%": 1.0,
+        #     "150%": 1.5,
+        #     "200%": 2.0,
+        #     "400%": 4.0,
+        # }
+        # # The app needs to know which directories to use to find document images
+        # # and to save the output/export JSON files
+        # self.frame.imagedir = Path(os.getcwd())
+        # self.frame.datadir = Path(os.getcwd())
+        # self.frame.image_list = []
+        # self.frame.current_image_index = None
+
+        # TODO: This (temp?) test image is in the base project directory...
+        self.src_image = Image.open('softalkv2n07mar1982_0004.jpg')
+        self.frame.image_panel.src_image = self.src_image.copy()
+        self.frame.image_panel.prep_gui()
+
+        ####
+        # Create a TableGrid object
+        self.tbl_grid = FmtkTableGrid(self.frame.image_panel.src_image, None)
+        self.tbl_grid.draw_grid()
+
+        self.frame.Show()
+        return True
+
+
+class FmtkTableMinerGui(FmtkTableMinerFrame):
+    def __init__(self, parent):
+        FmtkTableMinerFrame.__init__(self, parent)
+        self.imagedir = Path(os.getcwd())
+        self.datadir = Path(os.getcwd())
+        self.image_list = []
+        self.current_image_index = None
+
+        self.scale_dict = {
             "10%": 0.1,
             "25%": 0.25,
             "50%": 0.5,
@@ -65,43 +105,21 @@ class FmtkTableMinerApp(wx.App):
             "200%": 2.0,
             "400%": 4.0,
         }
-        # The app needs to know which directories to use to find document images
-        # and to save the output/export JSON files
-        self.frame.imagedir = Path(os.getcwd())
-        self.frame.datadir = Path(os.getcwd())
-        self.frame.image_list = []
-        self.frame.current_image_index = None
-
-        # TODO: This (temp?) test image is in the base project directory...
-        self.src_image = Image.open('softalkv2n07mar1982_0004.jpg')
-        self.frame.appWin_image.src_image = self.src_image.copy()
-        self.frame.appWin_image.prep_gui()
-
-        ####
-        # Create a TableGrid object
-        self.tbl_grid = FmtkTableGrid(self.frame.appWin_image.src_image, None)
-        self.tbl_grid.draw_grid()
-
-        self.frame.Show()
-        return True
-
-
-class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     # Toolbar Event handlers when the user clicks on a toolbar button
     def start_table_bbox_mode(self, event):
         print("start_table_bbox_mode clicked")
-        self.appWin_image.task_profile = "rubberband_on"
+        self.image_panel.task_profile = "rubberband_on"
         wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
         self.when_entering_tbl_bbox_mode(event)
         event.Skip()
 
     def start_row_sep_mode(self, event):
-        self.when_leaving_task(self.appWin_image.task_profile)
-        # if self.appWin_image.task_profile == "rubberband_on":
+        self.when_leaving_task(self.image_panel.task_profile)
+        # if self.image_panel.task_profile == "rubberband_on":
         #     self.when_leaving_tbl_bbox_mode(event)
         print("start_row_sep_mode clicked")
-        self.appWin_image.task_profile = "row_sep"
+        self.image_panel.task_profile = "row_sep"
         cursor_image = wx.Image("resources/row-sep_cursor.png",
                                 wx.BITMAP_TYPE_ANY)
         cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 11)
@@ -112,9 +130,9 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         event.Skip()
 
     def start_col_sep_mode(self, event):
-        self.when_leaving_task(self.appWin_image.task_profile)
+        self.when_leaving_task(self.image_panel.task_profile)
         print("start_col_sep_mode clicked")
-        self.appWin_image.task_profile = "col_sep"
+        self.image_panel.task_profile = "col_sep"
         cursor_image = wx.Image("resources/col-sep_cursor.png",
                                 wx.BITMAP_TYPE_ANY)
         cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 0)
@@ -125,18 +143,18 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         event.Skip()
 
     def start_del_sep_mode(self, event):
-        self.when_leaving_task(self.appWin_image.task_profile)
+        self.when_leaving_task(self.image_panel.task_profile)
         print("start_del_sep_mode clicked")
-        self.appWin_image.task_profile = "del_sep"
+        self.image_panel.task_profile = "del_sep"
         # TODO: Set cursor to a crosshair
         wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
         self.when_entering_any_sep_mode(event)
         event.Skip()
 
     def start_sel_cell_mode(self, event):
-        self.when_leaving_task(self.appWin_image.task_profile)
+        self.when_leaving_task(self.image_panel.task_profile)
         print("start_sel_cell_mode clicked")
-        self.appWin_image.task_profile = "sel_cell"
+        self.image_panel.task_profile = "sel_cell"
         self.ocr_edit_ui("on")
         self.nlpx_edit_ui("on")
         self.Layout()
@@ -147,40 +165,40 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     # When the user changes the zoom level scale factor
     def on_scale_change(self, event):
         print("Scale_changed: ", self.tbar_zoom_size.GetStringSelection())
-        current_scale = self.appWin_image.img_scale
+        current_scale = self.image_panel.img_scale
         # First, get the current bounding box from either the rubberband or
         # the table grid, and scale it to the scr_image size
-        if self.appWin_image.task_profile == "rubberband_on":
-            src_bbox = self.appWin_image.src_scale_bbox(
-                self.appWin_image.rubberband.bounding_box)
-        elif self.appWin_image.task_profile != "rubberband_on":
-            src_bbox = self.appWin_image.scale_bbox(
-                self.appWin_image.app.tbl_grid.get_bbox())
+        if self.image_panel.task_profile == "rubberband_on":
+            src_bbox = self.image_panel.src_scale_bbox(
+                self.image_panel.rubberband.bounding_box)
+        elif self.image_panel.task_profile != "rubberband_on":
+            src_bbox = self.image_panel.scale_bbox(
+                self.image_panel.app.tbl_grid.get_bbox())
         else:
             # This should not happen...
             print("ERROR: on_scale_change: No bounding box found")
             src_bbox = None
         print("Source bbox: ", src_bbox)
         # Then, load the image at the new scale
-        self.appWin_image.img_scale = self.scale_dict[
+        self.image_panel.img_scale = self.scale_dict[
             self.tbar_zoom_size.GetStringSelection()]
-        self.appWin_image.load_image()
+        self.image_panel.load_image()
         # Then, scale the bounding box back to the new image
         # size and set it as the new bounding box
         if src_bbox != None:
-            scaled_bbox = self.appWin_image.scale_bbox(src_bbox)
-            if self.appWin_image.task_profile == "rubberband_on":
-                self.appWin_image.rubberband.bounding_box = scaled_bbox
+            scaled_bbox = self.image_panel.scale_bbox(src_bbox)
+            if self.image_panel.task_profile == "rubberband_on":
+                self.image_panel.rubberband.bounding_box = scaled_bbox
         # Finally, redraw the image
-        if self.appWin_image.task_profile == "rubberband_on":
+        if self.image_panel.task_profile == "rubberband_on":
             print("Scaled bbox: ", scaled_bbox)
-            # self.appWin_image.rubberband.bounding_box = scaled_bbox
-            dc = wx.BufferedDC(None, self.appWin_image.buffer)
-            self.appWin_image.rubberband.clear_canvas_and_draw(dc)
+            # self.image_panel.rubberband.bounding_box = scaled_bbox
+            dc = wx.BufferedDC(None, self.image_panel.buffer)
+            self.image_panel.rubberband.clear_canvas_and_draw(dc)
         else:
-            self.appWin_image.load_image()
-            self.appWin_image.app.tbl_grid.draw_grid()
-            self.appWin_image.Refresh()
+            self.image_panel.load_image()
+            self.image_panel.app.tbl_grid.draw_grid()
+            self.image_panel.Refresh()
         event.Skip()
 
     # Event handler helpers for the RubberbandPanel to
@@ -188,69 +206,69 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     # toolbar modes
     def on_tbar_tool_change(self, event):
         print("on_tbar_tool_changed")
-        if event.GetId() == tb_TBL_BBOX and self.appWin_image.task_profile != "rubberband_on":
+        if event.GetId() == tb_TBL_BBOX and self.image_panel.task_profile != "rubberband_on":
             self.start_table_bbox_mode(event)
-        elif event.GetId() == tb_ROW_SEP and self.appWin_image.task_profile != "row_sep":
+        elif event.GetId() == tb_ROW_SEP and self.image_panel.task_profile != "row_sep":
             self.start_row_sep_mode(event)
-        elif event.GetId() == tb_COL_SEP and self.appWin_image.task_profile != "col_sep":
+        elif event.GetId() == tb_COL_SEP and self.image_panel.task_profile != "col_sep":
             self.start_col_sep_mode(event)
-        elif event.GetId() == tb_DEL_SEP and self.appWin_image.task_profile != "del_sep":
+        elif event.GetId() == tb_DEL_SEP and self.image_panel.task_profile != "del_sep":
             self.start_del_sep_mode(event)
-        elif event.GetId() == tb_SEL_CELL and self.appWin_image.task_profile != "sel_cell":
+        elif event.GetId() == tb_SEL_CELL and self.image_panel.task_profile != "sel_cell":
             self.start_sel_cell_mode(event)
         event.Skip()
 
     def when_leaving_tbl_bbox_mode(self, event):
         # Transfer the bounding box to the table grid
-        src_scaled_bbox = self.appWin_image.src_scale_bbox(
-            self.appWin_image.rubberband.bounding_box)
-        self.appWin_image.app.tbl_grid.set_bbox(src_scaled_bbox)
+        src_scaled_bbox = self.image_panel.src_scale_bbox(
+            self.image_panel.rubberband.bounding_box)
+        self.image_panel.app.tbl_grid.set_bbox(src_scaled_bbox)
         # If the rubberband bounding box is different from the
         # bbox_checkpoint, then the user has changed the bounding
         # box, so we need to invalidate the table grid row and
         # column lines so that they will be recalculated.
-        if src_scaled_bbox != self.appWin_image.bbox_checkpoint:
-            self.appWin_image.app.tbl_grid.invalidate_row_lines()
-            self.appWin_image.app.tbl_grid.invalidate_column_lines()
+        if src_scaled_bbox != self.image_panel.bbox_checkpoint:
+            self.image_panel.app.tbl_grid.invalidate_row_lines()
+            self.image_panel.app.tbl_grid.invalidate_column_lines()
 
     def when_entering_tbl_bbox_mode(self, event):
         # Transfer the bounding box to the table grid to
         # initialize the rubberband bounding_box
-        self.appWin_image.src_image = self.appWin_image.app.src_image.copy()
-        self.appWin_image.load_image()
-        self.appWin_image.bbox_checkpoint = self.appWin_image.app.tbl_grid.get_bbox()
-        scaled_bbox = self.appWin_image.scale_bbox(
-            self.appWin_image.bbox_checkpoint)
+        self.image_panel.src_image = self.image_panel.app.src_image.copy()
+        self.image_panel.load_image()
+        self.image_panel.bbox_checkpoint = self.image_panel.app.tbl_grid.get_bbox()
+        scaled_bbox = self.image_panel.scale_bbox(
+            self.image_panel.bbox_checkpoint)
         rb_rect = scaled_bbox
-        self.appWin_image.rubberband.bounding_box = rb_rect
-        dc = wx.BufferedDC(None, self.appWin_image.buffer)
-        self.appWin_image.rubberband.clear_canvas_and_draw(dc)
+        self.image_panel.rubberband.bounding_box = rb_rect
+        dc = wx.BufferedDC(None, self.image_panel.buffer)
+        self.image_panel.rubberband.clear_canvas_and_draw(dc)
         event.Skip()
 
     def when_entering_any_sep_mode(self, event):
-        if self.appWin_image.task_profile != "rubberband_on":
-            self.appWin_image.src_image = self.appWin_image.app.src_image.copy()
-            self.appWin_image.load_image()
-            self.appWin_image.app.tbl_grid.draw_grid()
-            self.appWin_image.src_image = self.appWin_image.app.tbl_grid.return_image()
-            self.appWin_image.load_image()
-            self.appWin_image.app.tbl_grid.draw_grid()
-            self.appWin_image.Refresh()
+        if self.image_panel.task_profile != "rubberband_on":
+            self.image_panel.src_image = self.image_panel.app.src_image.copy()
+            self.image_panel.load_image()
+            self.image_panel.app.tbl_grid.draw_grid()
+            self.image_panel.src_image = self.image_panel.app.tbl_grid.return_image()
+            self.image_panel.load_image()
+            self.image_panel.app.tbl_grid.draw_grid()
+            self.image_panel.Refresh()
         event.Skip()
 
     def when_leaving_task(self, task_profile):
         if task_profile == "rubberband_on":
             # Transfer the bounding box to the table grid
-            src_scaled_bbox = self.appWin_image.src_scale_bbox(
-                self.appWin_image.rubberband.bounding_box)
-            self.appWin_image.app.tbl_grid.set_bbox(src_scaled_bbox)
+            src_scaled_bbox = self.image_panel.src_scale_bbox(
+                self.image_panel.rubberband.bounding_box)
+            self.image_panel.app.tbl_grid.set_bbox(src_scaled_bbox)
             # If the rubberband bounding box is different from the
             # bbox_checkpoint, then the user has changed the bounding
             # box, so we need to invalidate the table grid row and
             # column lines so that they will be recalculated.
-            if src_scaled_bbox != self.appWin_image.bbox_checkpoint:
-                self.appWin_image.app.tbl_grid.invalidate_row_lines()
-                self.appWin_image.app.tbl_grid.invalidate_column_lines()
+            if src_scaled_bbox != self.image_panel.bbox_checkpoint:
+                self.image_panel.app.tbl_grid.invalidate_row_lines()
+                self.image_panel.app.tbl_grid.invalidate_column_lines()
         elif task_profile == "row_sep":
             pass
         elif task_profile == "col_sep":
@@ -268,42 +286,42 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self.ocr_lock_text.SetValue(True)
             self.on_lock_ocr_text(event)
         elif event.LeftDown():
-            evt_x, evt_y = evt_pos = self.appWin_image.rubberband.convert_event_coords(
+            evt_x, evt_y = evt_pos = self.image_panel.rubberband.convert_event_coords(
                 event)
-            unscaled_pt = self.appWin_image.scale_point(wx.Point(evt_pos))
-            if not self.appWin_image.app.tbl_grid.is_point_in_bbox(unscaled_pt):
+            unscaled_pt = self.image_panel.scale_point(wx.Point(evt_pos))
+            if not self.image_panel.app.tbl_grid.is_point_in_bbox(unscaled_pt):
                 pass
-            elif self.appWin_image.task_profile == "row_sep":
-                offset = self.appWin_image.app.tbl_grid.img_point_to_table_offset(
+            elif self.image_panel.task_profile == "row_sep":
+                offset = self.image_panel.app.tbl_grid.img_point_to_table_offset(
                     unscaled_pt, "row")
-                self.appWin_image.app.tbl_grid.add_row_offset(offset)
-            elif self.appWin_image.task_profile == "col_sep":
-                offset = self.appWin_image.app.tbl_grid.img_point_to_table_offset(
+                self.image_panel.app.tbl_grid.add_row_offset(offset)
+            elif self.image_panel.task_profile == "col_sep":
+                offset = self.image_panel.app.tbl_grid.img_point_to_table_offset(
                     unscaled_pt, "col")
-                self.appWin_image.app.tbl_grid.add_column_offset(offset)
-            elif self.appWin_image.task_profile == "del_sep":
-                self.appWin_image.app.tbl_grid.delete_near_row_or_column_sep(
+                self.image_panel.app.tbl_grid.add_column_offset(offset)
+            elif self.image_panel.task_profile == "del_sep":
+                self.image_panel.app.tbl_grid.delete_near_row_or_column_sep(
                     unscaled_pt)
-            elif self.appWin_image.task_profile == "sel_cell":
+            elif self.image_panel.task_profile == "sel_cell":
                 # If the ocrgt text is modified, then save it
                 # if self.ocr_text_edit.IsModified():
                 #     self.ocr_lock_text.SetValue(True)
                 #     self.on_lock_ocr_text(event)
                 #     self.ocr_text_edit.SetModified(False)
-                self.appWin_image.app.tbl_grid.compute_cell_bboxes()
-                row_col = self.appWin_image.app.tbl_grid.select_cell_at_point(
+                self.image_panel.app.tbl_grid.compute_cell_bboxes()
+                row_col = self.image_panel.app.tbl_grid.select_cell_at_point(
                     unscaled_pt)
                 if row_col is not False:
                     self.refresh_text_edit_panels(row_col)
             # Finally, redraw the image
-            self.appWin_image.app.tbl_grid.draw_grid()
-            self.appWin_image.src_image = self.appWin_image.app.tbl_grid.return_image()
-            self.appWin_image.load_image()
-            self.appWin_image.Refresh()
+            self.image_panel.app.tbl_grid.draw_grid()
+            self.image_panel.src_image = self.image_panel.app.tbl_grid.return_image()
+            self.image_panel.load_image()
+            self.image_panel.Refresh()
         event.Skip()
 
     def refresh_text_edit_panels(self, row_col):
-        ocrgt_text, ocrgt_lock = self.appWin_image.app.tbl_grid.get_cell_ocrgt_text(
+        ocrgt_text, ocrgt_lock = self.image_panel.app.tbl_grid.get_cell_ocrgt_text(
             row_col[0], row_col[1])
         if ocrgt_lock:
             self.ocr_lock_text.SetValue(ocrgt_lock)
@@ -324,7 +342,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self.ocr_text_edit.Enable()
             self.ocr_text_edit.SetFocus()
         # Handle similarly the nlpx panel
-        nlpx_text, nlpx_lock = self.appWin_image.app.tbl_grid.get_cell_nlpx_text(
+        nlpx_text, nlpx_lock = self.image_panel.app.tbl_grid.get_cell_nlpx_text(
             row_col[0], row_col[1])
         if nlpx_lock:
             self.nlpx_lock_text.SetValue(nlpx_lock)
@@ -343,15 +361,15 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     def on_column_labels_click(self, event):
         print("on_column_labels_click")
-        dlg = Tbl_grid_column_dlg(self)
+        dlg = FmtkTableMinerColumnLabelDialog(self)
         if dlg.ShowModal() == wx.ID_OK:
             # Transfer the column labels to the table grid
             dlg.on_save_column_labels_dlg(event)
             # Finally, redraw the image
-            self.appWin_image.app.tbl_grid.draw_grid()
-            self.appWin_image.src_image = self.appWin_image.app.tbl_grid.return_image()
-            self.appWin_image.load_image()
-            self.appWin_image.Refresh()
+            self.image_panel.app.tbl_grid.draw_grid()
+            self.image_panel.src_image = self.image_panel.app.tbl_grid.return_image()
+            self.image_panel.load_image()
+            self.image_panel.Refresh()
         event.Skip()
 
     def ocr_edit_ui(self, onoff):
@@ -390,8 +408,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         else:
             self.nlpx_edit_ui("on")
             self.nlpx_text_edit.SetValue("")
-            row_num, col_num = self.appWin_image.app.tbl_grid.cell_to_highlight
-            nlpx_text, nlpx_lock = self.appWin_image.app.tbl_grid.get_cell_nlpx_text(
+            row_num, col_num = self.image_panel.app.tbl_grid.cell_to_highlight
+            nlpx_text, nlpx_lock = self.image_panel.app.tbl_grid.get_cell_nlpx_text(
                 row_num, col_num)
             self.nlpx_lock_text.SetValue(nlpx_lock)
             self.nlpx_text_edit.SetValue(nlpx_text)
@@ -406,16 +424,16 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     def on_lock_ocr_text(self, event):
         lock_state = self.ocr_lock_text.GetValue()
-        self.appWin_image.app.tbl_grid.set_cell_ocrgt_lock(lock_state)
-        row_num = self.appWin_image.app.tbl_grid.cell_to_highlight[0]
-        col_num = self.appWin_image.app.tbl_grid.cell_to_highlight[1]
+        self.image_panel.app.tbl_grid.set_cell_ocrgt_lock(lock_state)
+        row_num = self.image_panel.app.tbl_grid.cell_to_highlight[0]
+        col_num = self.image_panel.app.tbl_grid.cell_to_highlight[1]
         if lock_state:
-            self.appWin_image.app.tbl_grid.cells_edited = True
-            self.appWin_image.app.tbl_grid.cell_ocrgt_texts[row_num][col_num] = self.ocr_text_edit.GetValue(
+            self.image_panel.app.tbl_grid.cells_edited = True
+            self.image_panel.app.tbl_grid.cell_ocrgt_texts[row_num][col_num] = self.ocr_text_edit.GetValue(
             )
             self.ocr_text_edit.Disable()
-            self.appWin_image.app.tbl_grid.set_cell_nlpx_lock(lock_state)
-            self.appWin_image.app.tbl_grid.cell_nlpx_texts[row_num][col_num] = self.nlpx_text_edit.GetValue(
+            self.image_panel.app.tbl_grid.set_cell_nlpx_lock(lock_state)
+            self.image_panel.app.tbl_grid.cell_nlpx_texts[row_num][col_num] = self.nlpx_text_edit.GetValue(
             )
             self.nlpx_lock_text.SetValue(True)
             self.nlpx_text_edit.Disable()
@@ -428,12 +446,12 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     def on_lock_nlpx_text(self, event):
         lock_state = self.nlpx_lock_text.GetValue()
-        self.appWin_image.app.tbl_grid.set_cell_nlpx_lock(lock_state)
-        row_num = self.appWin_image.app.tbl_grid.cell_to_highlight[0]
-        col_num = self.appWin_image.app.tbl_grid.cell_to_highlight[1]
+        self.image_panel.app.tbl_grid.set_cell_nlpx_lock(lock_state)
+        row_num = self.image_panel.app.tbl_grid.cell_to_highlight[0]
+        col_num = self.image_panel.app.tbl_grid.cell_to_highlight[1]
         if lock_state:
-            self.appWin_image.app.tbl_grid.cells_edited = True
-            self.appWin_image.app.tbl_grid.cell_nlpx_texts[row_num][col_num] = self.nlpx_text_edit.GetValue(
+            self.image_panel.app.tbl_grid.cells_edited = True
+            self.image_panel.app.tbl_grid.cell_nlpx_texts[row_num][col_num] = self.nlpx_text_edit.GetValue(
             )
             self.nlpx_text_edit.Disable()
         else:
@@ -472,7 +490,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         event.Skip()
 
     def on_reread_ocr(self, event):
-        row_col = self.appWin_image.app.tbl_grid.cell_to_highlight
+        row_col = self.image_panel.app.tbl_grid.cell_to_highlight
         if row_col is not False:
             self.refresh_text_edit_panels(row_col)
         event.Skip()
@@ -495,9 +513,9 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         current_image = self.imagedir + "/" + \
             self.image_list[self.current_image_index]
         print(current_image)
-        self.appWin_image.src_image = Image.open(current_image)
-        self.appWin_image.image = self.appWin_image.src_image
-        self.appWin_image.load_image()
+        self.image_panel.src_image = Image.open(current_image)
+        self.image_panel.image = self.image_panel.src_image
+        self.image_panel.load_image()
         event.Skip()
 
     def on_set_data_directory(self, event):
@@ -508,6 +526,19 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         print(self.datadir)
         event.Skip()
 
+    def on_project_settings_click(self, event):
+        print("on_menu_settings_click")
+        dlg = FmtkTableMinerProjectDlg(self)
+        if dlg.ShowModal() == wx.ID_OK:
+            # Transfer the column labels to the table grid
+            # dlg.on_save_column_labels_dlg(event)
+            # Finally, redraw the image
+            self.image_panel.app.tbl_grid.draw_grid()
+            self.image_panel.src_image = self.image_panel.app.tbl_grid.return_image()
+            self.image_panel.load_image()
+            self.image_panel.Refresh()
+        event.Skip()
+
     def on_quit_app(self, event):
         event.Skip()
 
@@ -516,7 +547,7 @@ class FmtkTableMinerColumnLabelDlg(FmtkTableMinerColumnLabelDialog):
     def __init__(self, parent):
         FmtkTableMinerColumnLabelDialog.__init__(self, parent)
         self.parent = parent
-        self.app = self.parent.appWin_image.app
+        self.app = self.parent.image_panel.app
 
     # Virtual event handlers
     def on_save_column_labels_dlg(self, event):
@@ -550,9 +581,29 @@ class FmtkTableMinerColumnLabelDlg(FmtkTableMinerColumnLabelDialog):
         event.Skip()
 
 
+class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
+    def __init__(self, parent):
+        FmtkTableMinerProjectDialog.__init__(self, parent)
+        self.parent = parent
+        self.app = self.parent.image_panel.app
+
+    # Virtual event handlers
+    def on_add_label_click(self, event):
+        event.Skip()
+
+    def on_delete_label_click(self, event):
+        event.Skip()
+
+    def on_add_tag_click(self, event):
+        event.Skip()
+
+    def on_delete_tag_click(self, event):
+        event.Skip()
+
+
 # Main
 if __name__ == "__main__":
-    app = FmtkTableMinerApp(0)
+    app = FmtkTableMinerApp()
     # app.SetAppName("Fmtk TableMiner")
     # wx.lib.inspection.InspectionTool().Show()
 
