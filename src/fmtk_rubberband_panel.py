@@ -18,12 +18,12 @@ standalone = False
 
 class RubberbandPanel(wx.ScrolledWindow):
 
-    def __init__(self, a_frame, an_app, any_id):
-        wx.ScrolledWindow.__init__(self, a_frame, any_id, wx.DefaultPosition,
+    def __init__(self, parent, any_id):
+        wx.ScrolledWindow.__init__(self, parent, any_id, wx.DefaultPosition,
                                    wx.DefaultSize, wx.SUNKEN_BORDER |
                                    wx.HSCROLL | wx.VSCROLL, 'ID_RBPANEL')
-        self.frame = a_frame
-        self.app = an_app
+        self.frame = parent
+        # self.app = an_app
         # The use_case attribute distinguished beteen the "ml_tim" and
         # "scale_resizable" use cases.  The "ml_tim" use case is for the
         # creating resized images and bounding box dimensions of images
@@ -47,16 +47,16 @@ class RubberbandPanel(wx.ScrolledWindow):
         self.img_scale = 1.0
         # If a user wants to check the change in the bounding box dimensions.
         self.bbox_checkpoint = wx.Rect(0, 0, 0, 0)
-        if self.standalone:
+        # if self.standalone:
             #  TODO: Image height offset is hard-coded, needs dynamic fix or
             #   user setting
-            if 'wxMac' in wx.PlatformInfo:
-                self.max_height = wx.GetDisplaySize().Height - 100
-            else:
-                self.max_height = wx.GetDisplaySize().Height - 50
+        if 'wxMac' in wx.PlatformInfo:
+            self.max_height = wx.GetDisplaySize().Height # - 100
         else:
-            # Use the hosting app's max_height...
-            self.max_height = an_app.max_height
+            self.max_height = wx.GetDisplaySize().Height - 50
+        # else:
+        #     # Use the hosting app's max_height...
+        #     self.max_height = an_app.max_height
 
         self.src_image = Image.new('RGB', (100, 100))
         self.scaled_img2buffer = wx.Image(self.src_image.width,
@@ -238,7 +238,7 @@ if standalone:
     if __name__ == '__main__':
         app = wx.App()
         frame = wx.Frame(None, -1, "FMTK Rubberband Panel Test", (1024, 768))
-        rbp = RubberbandPanel(frame, app, wx.ID_ANY)
+        rbp = RubberbandPanel(frame, wx.ID_ANY)
         rbp.task_profile = 'standalone'
         app.SetTopWindow(frame)
         frame.Centre()
