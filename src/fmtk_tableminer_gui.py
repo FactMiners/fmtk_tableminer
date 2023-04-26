@@ -32,9 +32,6 @@ class FmtkTableMinerFrame (wx.Frame):
 
         self.SetSizeHints(wx.DefaultSize, wx.DefaultSize)
 
-        # Cheating to prep for adding the Rubberband panel via the app OnInit...
-        self.image_panel = None
-
         self.m_menubar1 = wx.MenuBar(0)
         self.mnu_top = wx.Menu()
         self.mnui_settings = wx.MenuItem(
@@ -61,8 +58,8 @@ class FmtkTableMinerFrame (wx.Frame):
 
         topWin_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.toolbar = wx.ToolBar(
-            self, wx.ID_ANY, wx.DefaultPosition, wx.Size(-1, -1), wx.TB_HORIZONTAL | wx.TAB_TRAVERSAL)
+        self.toolbar = wx.ToolBar(self, wx.ID_ANY, wx.DefaultPosition,
+                                  wx.Size(-1, -1), wx.TB_HORIZONTAL | wx.TAB_TRAVERSAL)
         self.toolbar.SetToolBitmapSize(wx.Size(40, 40))
         self.toolbar.SetToolSeparation(10)
         self.toolbar.SetMargins(wx.Size(0, -20))
@@ -167,6 +164,18 @@ class FmtkTableMinerFrame (wx.Frame):
 
         ocr_edit_label_sizer.Add(self.ocr_edit_tip, 0, wx.ALL, 5)
 
+        ocr_CELLEDITOR.Add(ocr_edit_label_sizer, 1, wx.EXPAND, 5)
+
+        self.ocr_text_edit = wx.TextCtrl(self, ocr_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize,
+                                         wx.HSCROLL | wx.TE_MULTILINE | wx.TE_PROCESS_ENTER | wx.TE_WORDWRAP | wx.TAB_TRAVERSAL)
+        self.ocr_text_edit.SetFont(wx.Font(
+            24, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString))
+        self.ocr_text_edit.Hide()
+        self.ocr_text_edit.SetMinSize(wx.Size(-1, 80))
+        self.ocr_text_edit.SetMaxSize(wx.Size(-1, 80))
+
+        ocr_CELLEDITOR.Add(self.ocr_text_edit, 0, wx.ALL | wx.EXPAND, 5)
+
         nlpx_edit_label_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         self.nlpx_edit_label = wx.StaticText(
@@ -198,19 +207,7 @@ class FmtkTableMinerFrame (wx.Frame):
 
         nlpx_edit_label_sizer.Add(self.nlpx_tag, 0, wx.ALL, 5)
 
-        ocr_edit_label_sizer.Add(nlpx_edit_label_sizer, 1, wx.EXPAND, 5)
-
-        ocr_CELLEDITOR.Add(ocr_edit_label_sizer, 1, wx.EXPAND, 5)
-
-        self.ocr_text_edit = wx.TextCtrl(self, ocr_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize,
-                                         wx.HSCROLL | wx.TE_MULTILINE | wx.TE_PROCESS_ENTER | wx.TE_WORDWRAP | wx.TAB_TRAVERSAL)
-        self.ocr_text_edit.SetFont(wx.Font(
-            24, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString))
-        self.ocr_text_edit.Hide()
-        self.ocr_text_edit.SetMinSize(wx.Size(-1, 80))
-        self.ocr_text_edit.SetMaxSize(wx.Size(-1, 80))
-
-        ocr_CELLEDITOR.Add(self.ocr_text_edit, 0, wx.ALL | wx.EXPAND, 5)
+        ocr_CELLEDITOR.Add(nlpx_edit_label_sizer, 1, wx.EXPAND, 5)
 
         self.nlpx_text_edit = wx.TextCtrl(self, nlpx_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize,
                                           wx.HSCROLL | wx.TE_MULTILINE | wx.TE_PROCESS_ENTER | wx.TE_WORDWRAP | wx.HSCROLL | wx.TAB_TRAVERSAL | wx.VSCROLL)
@@ -226,7 +223,7 @@ class FmtkTableMinerFrame (wx.Frame):
 
         self.SetSizer(topWin_sizer)
         self.Layout()
-        self.statusBar = self.CreateStatusBar(
+        self.appWin_statusBar = self.CreateStatusBar(
             2, wx.STB_SIZEGRIP, wx.ID_ANY)
 
         self.Centre(wx.BOTH)
@@ -239,6 +236,7 @@ class FmtkTableMinerFrame (wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_set_data_directory,
                   id=self.mnui_datadir.GetId())
         self.Bind(wx.EVT_MENU, self.on_quit_app, id=self.mnui_quit.GetId())
+        self.toolbar.Bind(wx.EVT_ENTER_WINDOW, self.on_tbar_hover_enter)
         self.Bind(wx.EVT_TOOL, self.on_tbar_tool_change,
                   id=self.tbar_table.GetId())
         self.Bind(wx.EVT_TOOL, self.on_tbar_tool_change,
@@ -256,11 +254,11 @@ class FmtkTableMinerFrame (wx.Frame):
             wx.EVT_BUTTON, self.on_project_settings_click)
         self.ocr_reread_btn.Bind(wx.EVT_BUTTON, self.on_reread_ocr)
         self.ocr_lock_text.Bind(wx.EVT_CHECKBOX, self.on_lock_ocr_text)
+        self.ocr_text_edit.Bind(wx.EVT_KEY_DOWN, self.on_text_edited)
         self.nlpx_copy_ocr_text_btn.Bind(
             wx.EVT_BUTTON, self.on_copy_ocr_text_to_nlpx)
         self.nlpx_lock_text.Bind(wx.EVT_CHECKBOX, self.on_lock_nlpx_text)
         self.nlpx_tag.Bind(wx.EVT_CHOICE, self.on_insert_nlpx_tag)
-        self.ocr_text_edit.Bind(wx.EVT_KEY_DOWN, self.on_text_edited)
         self.nlpx_text_edit.Bind(wx.EVT_KEY_DOWN, self.on_text_edited)
 
     def __del__(self):
@@ -277,6 +275,9 @@ class FmtkTableMinerFrame (wx.Frame):
         event.Skip()
 
     def on_quit_app(self, event):
+        event.Skip()
+
+    def on_tbar_hover_enter(self, event):
         event.Skip()
 
     def on_tbar_tool_change(self, event):
@@ -297,6 +298,9 @@ class FmtkTableMinerFrame (wx.Frame):
     def on_lock_ocr_text(self, event):
         event.Skip()
 
+    def on_text_edited(self, event):
+        event.Skip()
+
     def on_copy_ocr_text_to_nlpx(self, event):
         event.Skip()
 
@@ -304,98 +308,6 @@ class FmtkTableMinerFrame (wx.Frame):
         event.Skip()
 
     def on_insert_nlpx_tag(self, event):
-        event.Skip()
-
-    def on_text_edited(self, event):
-        event.Skip()
-
-
-###########################################################################
-# Class FmtkTableMinerColumnLabelDialog
-###########################################################################
-
-class FmtkTableMinerColumnLabelDialog (wx.Dialog):
-
-    def __init__(self, parent):
-        wx.Dialog.__init__(self, parent, id=wx.ID_ANY, title=u"Label Names", pos=wx.DefaultPosition, size=wx.Size(
-            334, 301), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.TAB_TRAVERSAL)
-
-        self.SetSizeHints(wx.DefaultSize, wx.DefaultSize)
-
-        bSizer2 = wx.BoxSizer(wx.VERTICAL)
-
-        self.dlg_desc2 = wx.TextCtrl(self, wx.ID_ANY, u"Column names are enumerated left-to-right and used for NLP/XML entity tagging for metadata and data export of OCR content.",
-                                     wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
-        bSizer2.Add(self.dlg_desc2, 0, wx.ALL | wx.EXPAND, 5)
-
-        self.tbl_grid_props = wx.grid.Grid(
-            self, wx.ID_ANY, wx.DefaultPosition, wx.Size(-1, -1), wx.TAB_TRAVERSAL)
-
-        # Grid
-        self.tbl_grid_props.CreateGrid(0, 1)
-        self.tbl_grid_props.EnableEditing(True)
-        self.tbl_grid_props.EnableGridLines(True)
-        self.tbl_grid_props.EnableDragGridSize(False)
-        self.tbl_grid_props.SetMargins(0, 0)
-
-        # Columns
-        self.tbl_grid_props.SetColSize(0, 200)
-        self.tbl_grid_props.AutoSizeColumns()
-        self.tbl_grid_props.EnableDragColMove(False)
-        self.tbl_grid_props.EnableDragColSize(True)
-        self.tbl_grid_props.SetColLabelValue(0, u"Column label")
-        self.tbl_grid_props.SetColLabelAlignment(
-            wx.ALIGN_CENTER, wx.ALIGN_CENTER)
-
-        # Rows
-        self.tbl_grid_props.AutoSizeRows()
-        self.tbl_grid_props.EnableDragRowSize(True)
-        self.tbl_grid_props.SetRowLabelSize(30)
-        self.tbl_grid_props.SetRowLabelAlignment(
-            wx.ALIGN_CENTER, wx.ALIGN_CENTER)
-
-        # Label Appearance
-
-        # Cell Defaults
-        self.tbl_grid_props.SetDefaultCellAlignment(
-            wx.ALIGN_LEFT, wx.ALIGN_TOP)
-        bSizer2.Add(self.tbl_grid_props, 1, wx.ALL | wx.EXPAND, 5)
-
-        bSizer3 = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.chk_show_labels = wx.CheckBox(
-            self, wx.ID_ANY, u"Show labels?", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
-        self.chk_show_labels.SetValue(True)
-        bSizer3.Add(self.chk_show_labels, 1, wx.ALL, 5)
-
-        self.dlg_cancel_btn = wx.Button(
-            self, wx.ID_CANCEL, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
-        bSizer3.Add(self.dlg_cancel_btn, 0, wx.ALL, 5)
-
-        self.dlg_save_btn = wx.Button(
-            self, wx.ID_OK, u"Save", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
-        bSizer3.Add(self.dlg_save_btn, 0, wx.ALL, 5)
-
-        bSizer2.Add(bSizer3, 0, wx.EXPAND, 5)
-
-        self.SetSizer(bSizer2)
-        self.Layout()
-
-        self.Centre(wx.BOTH)
-
-        # Connect Events
-        self.Bind(wx.EVT_INIT_DIALOG, self.on_column_label_dlg_init)
-        self.tbl_grid_props.Bind(
-            wx.EVT_SIZE, self.on_resize_adjust_column_label)
-
-    def __del__(self):
-        pass
-
-    # Virtual event handlers, override them in your derived class
-    def on_column_label_dlg_init(self, event):
-        event.Skip()
-
-    def on_resize_adjust_column_label(self, event):
         event.Skip()
 
 
@@ -411,15 +323,18 @@ class FmtkTableMinerProjectDialog (wx.Dialog):
 
         self.SetSizeHints(wx.DefaultSize, wx.DefaultSize)
 
+        # Cheating to prep for adding the Rubberband panel via the app OnInit...
+        self.image_panel = None
+
         main_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        self.m_collapsiblePane2 = wx.CollapsiblePane(
-            self, wx.ID_ANY, u"Project Setup Help", wx.DefaultPosition, wx.DefaultSize, wx.CP_DEFAULT_STYLE | wx.ALWAYS_SHOW_SB)
-        self.m_collapsiblePane2.Collapse(True)
+        self.szr_help = wx.CollapsiblePane(self, wx.ID_ANY, u"Project Setup Help",
+                                           wx.DefaultPosition, wx.DefaultSize, wx.CP_DEFAULT_STYLE | wx.ALWAYS_SHOW_SB)
+        self.szr_help.Collapse(True)
 
         bSizer11 = wx.BoxSizer(wx.VERTICAL)
 
-        self.m_staticText11 = wx.StaticText(self.m_collapsiblePane2.GetPane(
+        self.m_staticText11 = wx.StaticText(self.szr_help.GetPane(
         ), wx.ID_ANY, u"Scroll for more...", wx.DefaultPosition, wx.DefaultSize, 0)
         self.m_staticText11.Wrap(-1)
 
@@ -428,107 +343,127 @@ class FmtkTableMinerProjectDialog (wx.Dialog):
 
         bSizer11.Add(self.m_staticText11, 0, wx.ALL, 5)
 
-        self.metadlg_desc = wx.TextCtrl(self.m_collapsiblePane2.GetPane(), wx.ID_ANY, u"Use this dialog to set up your TableMiner project. The standard use case is to gather the document page images containing the table structure of interest to be text- and data-mined. For eample, a project might consist of a collection of magazine pages with the mastheads of a serially-published magazine containing a borderless table of staff positions and person names fulfilling those roles.\n\nTo set up your project, provide a project title and brief desciption. The the directories for the source page images and output data. You may also set the column headers for you table and provide a semicolon-spearated list of tags that can be used to annotate your mined data to enhance the ground truth OCR text on export to JSON files in the data output directory.", wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
+        self.metadlg_desc = wx.TextCtrl(self.szr_help.GetPane(), wx.ID_ANY, u"Use this dialog to set up your TableMiner project. The standard use case is to gather the document page images containing the table structure of interest to be text- and data-mined. For eample, a project might consist of a collection of magazine pages with the mastheads of a serially-published magazine containing a borderless table of staff positions and person names fulfilling those roles.\n\nTo set up your project, provide a project title and brief desciption. The the directories for the source page images and output data. You may also set the column headers for you table and provide a semicolon-spearated list of tags that can be used to annotate your mined data to enhance the ground truth OCR text on export to JSON files in the data output directory.", wx.DefaultPosition, wx.DefaultSize, wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
         bSizer11.Add(self.metadlg_desc, 1, wx.ALL | wx.EXPAND, 5)
 
-        self.m_collapsiblePane2.GetPane().SetSizer(bSizer11)
-        self.m_collapsiblePane2.GetPane().Layout()
-        bSizer11.Fit(self.m_collapsiblePane2.GetPane())
-        main_sizer.Add(self.m_collapsiblePane2, 0, wx.ALL | wx.EXPAND, 5)
+        self.szr_help.GetPane().SetSizer(bSizer11)
+        self.szr_help.GetPane().Layout()
+        bSizer11.Fit(self.szr_help.GetPane())
+        main_sizer.Add(self.szr_help, 0, wx.ALL | wx.EXPAND, 5)
 
-        sbSizer1 = wx.StaticBoxSizer(wx.StaticBox(
+        szr_proj_title_desc = wx.StaticBoxSizer(wx.StaticBox(
             self, wx.ID_ANY, u"Project Title and Description"), wx.VERTICAL)
 
-        self.project_title = wx.TextCtrl(sbSizer1.GetStaticBox(
+        self.project_title = wx.TextCtrl(szr_proj_title_desc.GetStaticBox(
         ), wx.ID_ANY, u"Title", wx.DefaultPosition, wx.Size(-1, -1), 0 | wx.TAB_TRAVERSAL)
-        sbSizer1.Add(self.project_title, 0, wx.ALL | wx.EXPAND, 5)
+        szr_proj_title_desc.Add(self.project_title, 0, wx.ALL | wx.EXPAND, 5)
 
-        self.project_desc = wx.TextCtrl(sbSizer1.GetStaticBox(
-        ), wx.ID_ANY, u"Description", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL | wx.WANTS_CHARS)
-        self.project_desc.SetMinSize(wx.Size(-1, 40))
+        self.project_description = wx.TextCtrl(szr_proj_title_desc.GetStaticBox(), wx.ID_ANY, u"Description", wx.DefaultPosition,
+                                               wx.DefaultSize, wx.TE_MULTILINE | wx.TE_PROCESS_ENTER | wx.TE_WORDWRAP | wx.TAB_TRAVERSAL | wx.WANTS_CHARS)
+        self.project_description.SetMinSize(wx.Size(-1, 40))
 
-        sbSizer1.Add(self.project_desc, 0, wx.ALL | wx.EXPAND, 5)
+        szr_proj_title_desc.Add(self.project_description,
+                                0, wx.ALL | wx.EXPAND, 5)
 
-        main_sizer.Add(sbSizer1, 0, wx.EXPAND, 5)
+        main_sizer.Add(szr_proj_title_desc, 0, wx.EXPAND, 5)
 
-        sbSizer3 = wx.StaticBoxSizer(wx.StaticBox(
+        szr_project_directories = wx.StaticBoxSizer(wx.StaticBox(
             self, wx.ID_ANY, u"Project Directories"), wx.VERTICAL)
 
         bSizer18 = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.project_image_dir = wx.TextCtrl(sbSizer3.GetStaticBox(
-        ), wx.ID_ANY, u"Set image directory...", wx.DefaultPosition, wx.DefaultSize, 0)
+        self.project_image_dir = wx.TextCtrl(szr_project_directories.GetStaticBox(
+        ), wx.ID_ANY, u"Set image directory...", wx.DefaultPosition, wx.DefaultSize, wx.TE_RIGHT)
         bSizer18.Add(self.project_image_dir, 1, wx.ALL | wx.EXPAND, 5)
 
-        self.image_dir_btn = wx.Button(sbSizer3.GetStaticBox(
+        self.image_dir_btn = wx.Button(szr_project_directories.GetStaticBox(
         ), wx.ID_ANY, u"Select...", wx.DefaultPosition, wx.DefaultSize, 0)
         bSizer18.Add(self.image_dir_btn, 0, wx.ALL, 5)
 
-        sbSizer3.Add(bSizer18, 1, wx.EXPAND, 5)
+        szr_project_directories.Add(bSizer18, 1, wx.EXPAND, 5)
+
+        bSizer17 = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.st_img_tally_label = wx.StaticText(szr_project_directories.GetStaticBox(
+        ), wx.ID_ANY, u"Image Tally (total/done)", wx.DefaultPosition, wx.DefaultSize, 0)
+        self.st_img_tally_label.Wrap(-1)
+
+        self.st_img_tally_label.SetFont(wx.Font(wx.NORMAL_FONT.GetPointSize(
+        ), wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_ITALIC, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString))
+
+        bSizer17.Add(self.st_img_tally_label, 0, wx.ALL, 5)
+
+        self.project_images_processed = wx.TextCtrl(szr_project_directories.GetStaticBox(
+        ), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.TE_CENTER | wx.TE_READONLY)
+        bSizer17.Add(self.project_images_processed, 1, wx.ALL | wx.EXPAND, 5)
+
+        szr_project_directories.Add(bSizer17, 1, wx.EXPAND, 5)
 
         bSizer181 = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.project_data_dir = wx.TextCtrl(sbSizer3.GetStaticBox(
-        ), wx.ID_ANY, u"Set data directory...", wx.DefaultPosition, wx.DefaultSize, 0)
+        self.project_data_dir = wx.TextCtrl(szr_project_directories.GetStaticBox(
+        ), wx.ID_ANY, u"Set data directory...", wx.DefaultPosition, wx.DefaultSize, wx.TE_RIGHT)
         bSizer181.Add(self.project_data_dir, 1, wx.ALL | wx.EXPAND, 5)
 
-        self.data_dir_btn = wx.Button(sbSizer3.GetStaticBox(
+        self.data_dir_btn = wx.Button(szr_project_directories.GetStaticBox(
         ), wx.ID_ANY, u"Select...", wx.DefaultPosition, wx.DefaultSize, 0)
         bSizer181.Add(self.data_dir_btn, 0, wx.ALL, 5)
 
-        sbSizer3.Add(bSizer181, 1, wx.EXPAND, 5)
+        szr_project_directories.Add(bSizer181, 1, wx.EXPAND, 5)
 
-        main_sizer.Add(sbSizer3, 0, wx.EXPAND, 5)
+        main_sizer.Add(szr_project_directories, 0, wx.EXPAND, 5)
 
-        sbSizer5 = wx.StaticBoxSizer(wx.StaticBox(
+        szr_table_cols_tags = wx.StaticBoxSizer(wx.StaticBox(
             self, wx.ID_ANY, u"Table Column Labels and NLP Tags"), wx.VERTICAL)
+
+        szr_col_labels = wx.BoxSizer(wx.VERTICAL)
 
         bSizer27 = wx.BoxSizer(wx.HORIZONTAL)
 
         bSizer31 = wx.BoxSizer(wx.VERTICAL)
 
-        self.tbl_grid_col_labels = wx.grid.Grid(sbSizer5.GetStaticBox(
+        self.project_column_labels = wx.grid.Grid(szr_table_cols_tags.GetStaticBox(
         ), wx.ID_ANY, wx.DefaultPosition, wx.Size(-1, -1), wx.TAB_TRAVERSAL)
 
         # Grid
-        self.tbl_grid_col_labels.CreateGrid(2, 1)
-        self.tbl_grid_col_labels.EnableEditing(True)
-        self.tbl_grid_col_labels.EnableGridLines(True)
-        self.tbl_grid_col_labels.EnableDragGridSize(False)
-        self.tbl_grid_col_labels.SetMargins(0, 0)
+        self.project_column_labels.CreateGrid(3, 1)
+        self.project_column_labels.EnableEditing(True)
+        self.project_column_labels.EnableGridLines(True)
+        self.project_column_labels.EnableDragGridSize(False)
+        self.project_column_labels.SetMargins(0, 0)
 
         # Columns
-        self.tbl_grid_col_labels.SetColSize(0, 120)
-        self.tbl_grid_col_labels.EnableDragColMove(False)
-        self.tbl_grid_col_labels.EnableDragColSize(True)
-        self.tbl_grid_col_labels.SetColLabelValue(0, u"Column label")
-        self.tbl_grid_col_labels.SetColLabelAlignment(
+        self.project_column_labels.SetColSize(0, 120)
+        self.project_column_labels.EnableDragColMove(False)
+        self.project_column_labels.EnableDragColSize(True)
+        self.project_column_labels.SetColLabelValue(0, u"Column label")
+        self.project_column_labels.SetColLabelAlignment(
             wx.ALIGN_CENTER, wx.ALIGN_CENTER)
 
         # Rows
-        self.tbl_grid_col_labels.AutoSizeRows()
-        self.tbl_grid_col_labels.EnableDragRowSize(True)
-        self.tbl_grid_col_labels.SetRowLabelSize(0)
-        self.tbl_grid_col_labels.SetRowLabelAlignment(
+        self.project_column_labels.AutoSizeRows()
+        self.project_column_labels.EnableDragRowSize(True)
+        self.project_column_labels.SetRowLabelSize(0)
+        self.project_column_labels.SetRowLabelAlignment(
             wx.ALIGN_CENTER, wx.ALIGN_CENTER)
 
         # Label Appearance
 
         # Cell Defaults
-        self.tbl_grid_col_labels.SetDefaultCellAlignment(
+        self.project_column_labels.SetDefaultCellAlignment(
             wx.ALIGN_LEFT, wx.ALIGN_TOP)
-        bSizer31.Add(self.tbl_grid_col_labels, 0, wx.ALL, 5)
+        bSizer31.Add(self.project_column_labels, 0, wx.ALL, 5)
 
         bSizer32 = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.add_label_btn = wx.Button(sbSizer5.GetStaticBox(
+        self.add_label_btn = wx.Button(szr_table_cols_tags.GetStaticBox(
         ), wx.ID_ANY, u"+", wx.DefaultPosition, wx.DefaultSize, 0)
         self.add_label_btn.SetToolTip(u"Add column label after selected...")
         self.add_label_btn.SetMaxSize(wx.Size(20, -1))
 
         bSizer32.Add(self.add_label_btn, 0, wx.ALL, 5)
 
-        self.delete_label_btn = wx.Button(sbSizer5.GetStaticBox(
+        self.delete_label_btn = wx.Button(szr_table_cols_tags.GetStaticBox(
         ), wx.ID_ANY, u"-", wx.DefaultPosition, wx.DefaultSize, 0)
         self.delete_label_btn.SetToolTip(u"Delete selected column label.")
         self.delete_label_btn.SetMaxSize(wx.Size(20, -1))
@@ -539,58 +474,63 @@ class FmtkTableMinerProjectDialog (wx.Dialog):
 
         bSizer27.Add(bSizer31, 0, wx.EXPAND, 5)
 
-        self.dlg_desc2 = wx.TextCtrl(sbSizer5.GetStaticBox(), wx.ID_ANY, u"Column names are set left-to-right, and used for NLP/XML data structuring of JSON export of table content.",
-                                     wx.DefaultPosition, wx.Size(-1, 80), wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
+        self.dlg_desc2 = wx.TextCtrl(szr_table_cols_tags.GetStaticBox(), wx.ID_ANY, u"Column names are set left-to-right, and used for structuring export data file formats.",
+                                     wx.DefaultPosition, wx.Size(-1, 90), wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
         bSizer27.Add(self.dlg_desc2, 1, wx.ALL, 5)
 
-        sbSizer5.Add(bSizer27, 1, wx.EXPAND, 5)
+        szr_col_labels.Add(bSizer27, 1, wx.EXPAND, 5)
 
-        bSizer271 = wx.BoxSizer(wx.HORIZONTAL)
+        self.project_show_column_labels = wx.CheckBox(szr_table_cols_tags.GetStaticBox(
+        ), wx.ID_ANY, u"Show column labels while editing?", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
+        self.project_show_column_labels.SetValue(True)
+        szr_col_labels.Add(self.project_show_column_labels, 0, wx.ALL, 5)
+
+        szr_nlpx_tags = wx.BoxSizer(wx.HORIZONTAL)
 
         bSizer36 = wx.BoxSizer(wx.VERTICAL)
 
-        self.tbl_grid_nlp_tags = wx.grid.Grid(sbSizer5.GetStaticBox(
+        self.project_nlp_tags = wx.grid.Grid(szr_table_cols_tags.GetStaticBox(
         ), wx.ID_ANY, wx.DefaultPosition, wx.Size(-1, -1), wx.TAB_TRAVERSAL)
 
         # Grid
-        self.tbl_grid_nlp_tags.CreateGrid(2, 1)
-        self.tbl_grid_nlp_tags.EnableEditing(True)
-        self.tbl_grid_nlp_tags.EnableGridLines(True)
-        self.tbl_grid_nlp_tags.EnableDragGridSize(False)
-        self.tbl_grid_nlp_tags.SetMargins(0, 0)
+        self.project_nlp_tags.CreateGrid(3, 1)
+        self.project_nlp_tags.EnableEditing(True)
+        self.project_nlp_tags.EnableGridLines(True)
+        self.project_nlp_tags.EnableDragGridSize(False)
+        self.project_nlp_tags.SetMargins(0, 0)
 
         # Columns
-        self.tbl_grid_nlp_tags.SetColSize(0, 120)
-        self.tbl_grid_nlp_tags.EnableDragColMove(False)
-        self.tbl_grid_nlp_tags.EnableDragColSize(True)
-        self.tbl_grid_nlp_tags.SetColLabelValue(0, u"NLP Tags")
-        self.tbl_grid_nlp_tags.SetColLabelAlignment(
+        self.project_nlp_tags.SetColSize(0, 120)
+        self.project_nlp_tags.EnableDragColMove(False)
+        self.project_nlp_tags.EnableDragColSize(True)
+        self.project_nlp_tags.SetColLabelValue(0, u"NLP Tags")
+        self.project_nlp_tags.SetColLabelAlignment(
             wx.ALIGN_CENTER, wx.ALIGN_CENTER)
 
         # Rows
-        self.tbl_grid_nlp_tags.AutoSizeRows()
-        self.tbl_grid_nlp_tags.EnableDragRowSize(True)
-        self.tbl_grid_nlp_tags.SetRowLabelSize(0)
-        self.tbl_grid_nlp_tags.SetRowLabelAlignment(
+        self.project_nlp_tags.AutoSizeRows()
+        self.project_nlp_tags.EnableDragRowSize(True)
+        self.project_nlp_tags.SetRowLabelSize(0)
+        self.project_nlp_tags.SetRowLabelAlignment(
             wx.ALIGN_CENTER, wx.ALIGN_CENTER)
 
         # Label Appearance
 
         # Cell Defaults
-        self.tbl_grid_nlp_tags.SetDefaultCellAlignment(
+        self.project_nlp_tags.SetDefaultCellAlignment(
             wx.ALIGN_LEFT, wx.ALIGN_TOP)
-        bSizer36.Add(self.tbl_grid_nlp_tags, 0, wx.ALL, 5)
+        bSizer36.Add(self.project_nlp_tags, 0, wx.ALL, 5)
 
         bSizer321 = wx.BoxSizer(wx.HORIZONTAL)
 
-        self.add_tag_btn = wx.Button(sbSizer5.GetStaticBox(
+        self.add_tag_btn = wx.Button(szr_table_cols_tags.GetStaticBox(
         ), wx.ID_ANY, u"+", wx.DefaultPosition, wx.DefaultSize, 0)
         self.add_tag_btn.SetToolTip(u"Add column label after selected...")
         self.add_tag_btn.SetMaxSize(wx.Size(20, -1))
 
         bSizer321.Add(self.add_tag_btn, 0, wx.ALL, 5)
 
-        self.delete_tag_btn = wx.Button(sbSizer5.GetStaticBox(
+        self.delete_tag_btn = wx.Button(szr_table_cols_tags.GetStaticBox(
         ), wx.ID_ANY, u"-", wx.DefaultPosition, wx.DefaultSize, 0)
         self.delete_tag_btn.SetToolTip(u"Delete selected column label.")
         self.delete_tag_btn.SetMaxSize(wx.Size(20, -1))
@@ -599,63 +539,64 @@ class FmtkTableMinerProjectDialog (wx.Dialog):
 
         bSizer36.Add(bSizer321, 1, wx.EXPAND, 5)
 
-        bSizer271.Add(bSizer36, 1, wx.EXPAND, 5)
+        szr_nlpx_tags.Add(bSizer36, 0, wx.EXPAND, 5)
 
-        self.dlg_desc21 = wx.TextCtrl(sbSizer5.GetStaticBox(), wx.ID_ANY, u"NLP Tags are used for fine-grained data-mining of OCR text.",
-                                      wx.DefaultPosition, wx.Size(-1, 80), wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
-        bSizer271.Add(self.dlg_desc21, 1, wx.ALL, 5)
+        self.dlg_desc21 = wx.TextCtrl(szr_table_cols_tags.GetStaticBox(), wx.ID_ANY, u"NLP Tags are used for fine-grained data-mining of OCR text.",
+                                      wx.DefaultPosition, wx.Size(-1, 90), wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_WORDWRAP)
+        szr_nlpx_tags.Add(self.dlg_desc21, 1, wx.ALL, 5)
 
-        sbSizer5.Add(bSizer271, 1, wx.EXPAND, 5)
+        szr_col_labels.Add(szr_nlpx_tags, 1, wx.EXPAND, 5)
 
-        main_sizer.Add(sbSizer5, 0, wx.EXPAND, 5)
+        self.project_semicolon_delimiters = wx.CheckBox(szr_table_cols_tags.GetStaticBox(
+        ), wx.ID_ANY, u"Process semicolons as item separator.", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
+        szr_col_labels.Add(self.project_semicolon_delimiters, 0, wx.ALL, 5)
 
-        sbSizer4 = wx.StaticBoxSizer(wx.StaticBox(
+        szr_table_cols_tags.Add(szr_col_labels, 1, wx.EXPAND, 5)
+
+        main_sizer.Add(szr_table_cols_tags, 0, wx.EXPAND, 5)
+
+        szr_export_formats = wx.StaticBoxSizer(wx.StaticBox(
             self, wx.ID_ANY, u"Export Data Files"), wx.VERTICAL)
 
-        self.st_export_files_desc = wx.StaticText(sbSizer4.GetStaticBox(
+        self.st_export_files_desc = wx.StaticText(szr_export_formats.GetStaticBox(
         ), wx.ID_ANY, u"Select one or more data file export formats.", wx.DefaultPosition, wx.DefaultSize, 0)
         self.st_export_files_desc.Wrap(-1)
 
-        sbSizer4.Add(self.st_export_files_desc, 0, wx.ALL, 5)
+        szr_export_formats.Add(self.st_export_files_desc, 0, wx.ALL, 5)
 
         gSizer1 = wx.GridSizer(2, 2, 0, 0)
 
-        self.cb_json_export = wx.CheckBox(sbSizer4.GetStaticBox(
+        self.project_json_export = wx.CheckBox(szr_export_formats.GetStaticBox(
         ), wx.ID_ANY, u"JSON", wx.DefaultPosition, wx.DefaultSize, 0)
-        gSizer1.Add(self.cb_json_export, 0, wx.ALL, 5)
+        gSizer1.Add(self.project_json_export, 0, wx.ALL, 5)
 
-        self.cd_xml_export = wx.CheckBox(sbSizer4.GetStaticBox(
+        self.project_xml_export = wx.CheckBox(szr_export_formats.GetStaticBox(
         ), wx.ID_ANY, u"XML", wx.DefaultPosition, wx.DefaultSize, 0)
-        gSizer1.Add(self.cd_xml_export, 0, wx.ALL, 5)
+        gSizer1.Add(self.project_xml_export, 0, wx.ALL, 5)
 
-        self.cb_html_export = wx.CheckBox(sbSizer4.GetStaticBox(
+        self.project_html_export = wx.CheckBox(szr_export_formats.GetStaticBox(
         ), wx.ID_ANY, u"HTML", wx.DefaultPosition, wx.DefaultSize, 0)
-        gSizer1.Add(self.cb_html_export, 0, wx.ALL, 5)
+        gSizer1.Add(self.project_html_export, 0, wx.ALL, 5)
 
-        self.cs_csv_export = wx.CheckBox(sbSizer4.GetStaticBox(
+        self.project_csv_export = wx.CheckBox(szr_export_formats.GetStaticBox(
         ), wx.ID_ANY, u"CSV", wx.DefaultPosition, wx.DefaultSize, 0)
-        gSizer1.Add(self.cs_csv_export, 0, wx.ALL, 5)
+        gSizer1.Add(self.project_csv_export, 0, wx.ALL, 5)
 
-        sbSizer4.Add(gSizer1, 1, wx.EXPAND, 5)
+        szr_export_formats.Add(gSizer1, 1, wx.EXPAND, 5)
 
-        main_sizer.Add(sbSizer4, 1, wx.EXPAND, 5)
+        main_sizer.Add(szr_export_formats, 1, wx.EXPAND, 5)
 
-        bSizer3 = wx.BoxSizer(wx.HORIZONTAL)
-
-        self.chk_show_labels = wx.CheckBox(
-            self, wx.ID_ANY, u"Show column labels?", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
-        self.chk_show_labels.SetValue(True)
-        bSizer3.Add(self.chk_show_labels, 1, wx.ALL, 5)
+        szr_dlg_actions = wx.BoxSizer(wx.HORIZONTAL)
 
         self.dlg_cancel_btn = wx.Button(
             self, wx.ID_CANCEL, u"Cancel", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
-        bSizer3.Add(self.dlg_cancel_btn, 0, wx.ALL, 5)
+        szr_dlg_actions.Add(self.dlg_cancel_btn, 0, wx.ALL, 5)
 
         self.dlg_save_btn = wx.Button(
             self, wx.ID_OK, u"Save", wx.DefaultPosition, wx.DefaultSize, 0 | wx.TAB_TRAVERSAL)
-        bSizer3.Add(self.dlg_save_btn, 0, wx.ALL, 5)
+        szr_dlg_actions.Add(self.dlg_save_btn, 0, wx.ALL, 5)
 
-        main_sizer.Add(bSizer3, 0, wx.EXPAND, 5)
+        main_sizer.Add(szr_dlg_actions, 0, wx.EXPAND, 5)
 
         self.SetSizer(main_sizer)
         self.Layout()
@@ -666,11 +607,11 @@ class FmtkTableMinerProjectDialog (wx.Dialog):
         # Connect Events
         self.image_dir_btn.Bind(wx.EVT_BUTTON, self.on_set_image_directory)
         self.data_dir_btn.Bind(wx.EVT_BUTTON, self.on_set_data_directory)
-        self.tbl_grid_col_labels.Bind(
+        self.project_column_labels.Bind(
             wx.EVT_SIZE, self.on_resize_adjust_column_label)
         self.add_label_btn.Bind(wx.EVT_BUTTON, self.on_add_label_click)
         self.delete_label_btn.Bind(wx.EVT_BUTTON, self.on_delete_label_click)
-        self.tbl_grid_nlp_tags.Bind(
+        self.project_nlp_tags.Bind(
             wx.EVT_SIZE, self.on_resize_adjust_column_label)
         self.add_tag_btn.Bind(wx.EVT_BUTTON, self.on_add_tag_click)
         self.delete_tag_btn.Bind(wx.EVT_BUTTON, self.on_delete_tag_click)

@@ -138,6 +138,9 @@ class FmtkTableGrid(object):
     def get_bbox(self):
         return BoundingBox(self.x, self.y, self.width, self.height)
 
+    def get_bbox_tuple(self):
+        return (self.x, self.y, self.width, self.height)
+
     def get_number_of_rows(self):
         return len(self.row_offsets) + 1
 
@@ -246,7 +249,8 @@ class FmtkTableGrid(object):
             if column_num in self.cell_ocrgt_texts[deleted_row_num].keys():
                 self.cell_ocrgt_texts[deleted_row_num][column_num] = \
                     self.cell_ocrgt_texts[deleted_row_num][column_num] + \
-                    '\n' + self.cell_ocrgt_texts[deleted_row_num + 1][column_num]
+                    '\n' + \
+                    self.cell_ocrgt_texts[deleted_row_num + 1][column_num]
             if column_num in self.cell_nlpx_texts[deleted_row_num].keys():
                 self.cell_nlpx_texts[deleted_row_num][column_num] = \
                     self.cell_nlpx_texts[deleted_row_num][column_num] + \
@@ -339,7 +343,7 @@ class FmtkTableGrid(object):
         self.cell_to_highlight = (row_num, col_num)
         if self.nlpx_cell_lock(row_num, col_num) == False:
             self.cell_nlpx_texts[row_num][col_num] = self.extract_cell_text(
-                row_num, col_num)
+                row_num, col_num).replace("\n", " ")
         return (self.cell_nlpx_texts[row_num][col_num], self.cell_nlpx_locks[row_num][col_num])
 
     def ocrgt_cell_lock(self, row_num, col_num):
@@ -563,9 +567,11 @@ class FmtkTableGrid(object):
     def draw_column_labels(self):
         if not self.column_labels or self.show_labels == False:
             return
+        elif len(self.column_labels) != len(self.column_offsets) + 1:
+            return
         # draw the test table's column labels on the image
         img1 = ImageDraw.Draw(self.image)
-        for col_num, col_name in self.column_labels.items():
+        for col_num, col_name in enumerate(self.column_labels, 1):
             if col_num == 1:
                 x = self.x
             else:

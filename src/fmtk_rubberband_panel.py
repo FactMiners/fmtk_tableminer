@@ -36,6 +36,7 @@ class RubberbandPanel(wx.ScrolledWindow):
 
         # TODO: Default to rubberband off for now...
         self.task_profile = "rubberband_on"
+        self.task_limbo = ""
         # If True, the panel is instantiated w/ its own menu and statusbars.
         self.standalone = standalone
         # Properties and related whatnot...

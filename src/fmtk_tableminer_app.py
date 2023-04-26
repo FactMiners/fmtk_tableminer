@@ -21,14 +21,14 @@
 
 import wx
 import json
+import yaml
+import xmltodict as xtd
 from pathlib import Path
 import os
 import copy
 from PIL import Image, ImageDraw, ImageFont
 import fmtk_rubberband_panel as rbp
-# from wx.lib.scrolledpanel import ScrolledPanel
 from fmtk_tableminer_gui import FmtkTableMinerFrame
-from fmtk_tableminer_gui import FmtkTableMinerColumnLabelDialog
 from fmtk_tableminer_gui import FmtkTableMinerProjectDialog
 from fmtk_tablegrid import FmtkTableGrid
 
@@ -46,19 +46,35 @@ class FmtkTableMinerApp(wx.App):
             self.max_height = wx.GetDisplaySize().Height - 50
         self.frame = FmtkTableMinerGui(None)
         self.SetTopWindow(self.frame)
+        self.frame.app = self
 
         self.frame.Show()
+        if wx.MessageBox("Do you want to load an existing project?",
+                         "TableMiner Launch",
+                         wx.YES_NO | wx.NO_DEFAULT) == wx.YES:
+            self.frame.load_project_spec()
+
         return True
 
 
 class FmtkTableMinerGui(FmtkTableMinerFrame):
     def __init__(self, parent):
         FmtkTableMinerFrame.__init__(self, parent)
-        # self.frame = parent
-        self.imagedir = Path(os.getcwd())
-        self.datadir = Path(os.getcwd())
-        self.image_list = []
-        self.current_image_index = None
+        self.app = parent
+        self.project_spec_file = ""
+        self.project_spec = {}
+        self.project_spec["title"] = "Untitled"
+        self.project_spec["description"] = ""
+        self.project_spec["image_dir"] = Path(os.getcwd())
+        self.project_spec["data_dir"] = Path(os.getcwd())
+        self.project_spec["column_labels"] = []
+        self.project_spec["show_column_labels"] = True
+        self.project_spec["nlp_tags"] = []
+        self.project_spec["semicolon_delimiters"] = False
+        self.project_spec["export_formats"] = ["json", "xml"]
+        self.project_spec["image_list"] = []
+        self.project_spec["current_image_index"] = None
+        self.project_spec["done_image_list"] = []
 
         self.scale_dict = {
             "10%": 0.1,
@@ -76,6 +92,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self, wx.ID_ANY)
         main_sizer.Insert(1, self.image_panel, 1, wx.EXPAND | wx.LEFT)
         self.image_panel.task_profile = "no_task"
+        self.image_panel.Bind(wx.EVT_ENTER_WINDOW, self.on_image_panel_hover_enter)
+        self.tool_cursor = wx.Cursor(wx.CURSOR_ARROW)
         # Set a large but arbitary max_pixel size for the panel's image
         # self.image_panel.max_pixels = 2000000
         self.image_panel.max_pixels = 0
@@ -92,7 +110,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     # Toolbar Event handlers when the user clicks on a toolbar button
     def start_table_bbox_mode(self, event):
-        print("start_table_bbox_mode clicked")
+        # print("start_table_bbox_mode clicked")
+        self.when_leaving_task(self.image_panel.task_profile)
         self.image_panel.task_profile = "rubberband_on"
         wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
         self.when_entering_tbl_bbox_mode(event)
@@ -102,7 +121,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         self.when_leaving_task(self.image_panel.task_profile)
         # if self.image_panel.task_profile == "rubberband_on":
         #     self.when_leaving_tbl_bbox_mode(event)
-        print("start_row_sep_mode clicked")
+        # print("start_row_sep_mode clicked")
         self.image_panel.task_profile = "row_sep"
         cursor_image = wx.Image("resources/row-sep_cursor.png",
                                 wx.BITMAP_TYPE_ANY)
@@ -110,12 +129,13 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 20)
         cursor = wx.Cursor(cursor_image)
         wx.SetCursor(cursor)
+        # self.tool_cursor = cursor
         self.when_entering_any_sep_mode(event)
         event.Skip()
 
     def start_col_sep_mode(self, event):
         self.when_leaving_task(self.image_panel.task_profile)
-        print("start_col_sep_mode clicked")
+        # print("start_col_sep_mode clicked")
         self.image_panel.task_profile = "col_sep"
         cursor_image = wx.Image("resources/col-sep_cursor.png",
                                 wx.BITMAP_TYPE_ANY)
@@ -123,12 +143,13 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 11)
         cursor = wx.Cursor(cursor_image)
         wx.SetCursor(cursor)
+        # self.tool_cursor = cursor
         self.when_entering_any_sep_mode(event)
         event.Skip()
 
     def start_del_sep_mode(self, event):
         self.when_leaving_task(self.image_panel.task_profile)
-        print("start_del_sep_mode clicked")
+        # print("start_del_sep_mode clicked")
         self.image_panel.task_profile = "del_sep"
         # TODO: Set cursor to a crosshair
         wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
@@ -137,18 +158,19 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
 
     def start_sel_cell_mode(self, event):
         self.when_leaving_task(self.image_panel.task_profile)
-        print("start_sel_cell_mode clicked")
+        # print("start_sel_cell_mode clicked")
         self.image_panel.task_profile = "sel_cell"
         self.ocr_edit_ui("on")
         self.nlpx_edit_ui("on")
         self.Layout()
         wx.SetCursor(wx.Cursor(wx.CURSOR_QUESTION_ARROW))
+        self.tool_cursor = wx.Cursor(wx.CURSOR_QUESTION_ARROW)
         self.when_entering_any_sep_mode(event)
         event.Skip()
 
     # When the user changes the zoom level scale factor
     def on_scale_change(self, event):
-        print("Scale_changed: ", self.tbar_zoom_size.GetStringSelection())
+        # print("Scale_changed: ", self.tbar_zoom_size.GetStringSelection())
         current_scale = self.image_panel.img_scale
         # First, get the current bounding box from either the rubberband or
         # the table grid, and scale it to the scr_image size
@@ -200,6 +222,38 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self.start_del_sep_mode(event)
         elif event.GetId() == tb_SEL_CELL and self.image_panel.task_profile != "sel_cell":
             self.start_sel_cell_mode(event)
+        event.Skip()
+
+    def on_tbar_hover_enter(self, event):
+        self.image_panel.task_limbo = self.image_panel.task_profile
+        # self.tool_cursor = self.GetCursor()
+        wx.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+        event.Skip()
+
+    def on_image_panel_hover_enter(self, event):
+        match self.image_panel.task_profile:
+            case "rubberband_on":
+                wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
+            case "row_sep":
+                cursor_image = wx.Image("resources/row-sep_cursor.png",
+                                        wx.BITMAP_TYPE_ANY)
+                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 11)
+                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 20)
+                cursor = wx.Cursor(cursor_image)
+                wx.SetCursor(cursor)
+            case "col_sep":
+                cursor_image = wx.Image("resources/col-sep_cursor.png",
+                                        wx.BITMAP_TYPE_ANY)
+                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 0)
+                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 11)
+                cursor = wx.Cursor(cursor_image)
+                wx.SetCursor(cursor)
+            case "del_sep":
+                wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
+            case "sel_cell":
+                wx.SetCursor(wx.Cursor(wx.CURSOR_QUESTION_ARROW))
+            case _:
+                wx.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
         event.Skip()
 
     def when_leaving_tbl_bbox_mode(self, event):
@@ -342,19 +396,6 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self.nlpx_text_edit.Enable()
             self.nlpx_text_edit.SetFocus()
 
-    def on_column_labels_click(self, event):
-        print("on_column_labels_click")
-        dlg = FmtkTableMinerColumnLabelDialog(self)
-        if dlg.ShowModal() == wx.ID_OK:
-            # Transfer the column labels to the table grid
-            dlg.on_save_column_labels_dlg(event)
-            # Finally, redraw the image
-            self.tbl_grid.draw_grid()
-            self.image_panel.src_image = self.tbl_grid.return_image()
-            self.image_panel.load_image()
-            self.image_panel.Refresh()
-        event.Skip()
-
     def ocr_edit_ui(self, onoff):
         if onoff == "on":
             self.ocr_edit_label.Show()
@@ -365,6 +406,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         elif onoff == "off":
             self.ocr_edit_label.Hide()
             # self.ocr_reread_btn.Hide()
+            self.ocr_text_edit.SetValue("")
+            self.ocr_lock_text.SetValue(False)
             self.ocr_lock_text.Hide()
             self.ocr_text_edit.Hide()
             self.ocr_edit_tip.Hide()
@@ -381,6 +424,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self.nlpx_edit_label.Hide()
             self.nlpx_copy_ocr_text_btn.Hide()
             self.nlpx_lock_text.Hide()
+            self.nlpx_lock_text.SetValue(False)
+            self.nlpx_text_edit.SetValue("")
             self.nlpx_text_edit.Hide()
             self.nlpx_tag.Hide()
         self.Layout()
@@ -481,86 +526,203 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     def on_menu_settings(self, event):
         event.Skip()
 
-    def on_set_image_directory(self, event):
-        dlg = wx.DirDialog(self, message="Choose a Document Image folder")
-        if dlg.ShowModal() == wx.ID_OK:
-            self.imagedir = dlg.GetPath()
-        dlg.Destroy()
-        print(self.imagedir)
-        image_files = sorted(os.listdir(self.imagedir))
-        for file in image_files:
-            if os.path.splitext(file)[1].lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff']:
-                self.image_list.append(file)
-        # print(self.image_list)
-        self.current_image_index = 0
-        current_image = self.imagedir + "/" + \
-            self.image_list[self.current_image_index]
-        print(current_image)
-        self.image_panel.src_image = Image.open(current_image)
-        self.image_panel.image = self.image_panel.src_image
-        self.image_panel.load_image()
-        event.Skip()
+    # def on_set_image_directory(self, event):
+    #     dlg = wx.DirDialog(self, message="Choose a Document Image folder")
+    #     if dlg.ShowModal() == wx.ID_OK:
+    #         self.imagedir = dlg.GetPath()
+    #     dlg.Destroy()
+    #     print(self.imagedir)
+    #     image_files = sorted(os.listdir(self.imagedir))
+    #     for file in image_files:
+    #         if os.path.splitext(file)[1].lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff']:
+    #             self.image_list.append(file)
+    #     # print(self.image_list)
+    #     self.current_image_index = 0
+    #     current_image = self.imagedir + "/" + \
+    #         self.image_list[self.current_image_index]
+    #     print(current_image)
+    #     self.src_image = Image.open(current_image)
+    #     self.image_panel.src_image = self.src_image.copy()
+    #     # self.image_panel.image = self.image_panel.src_image
+    #     self.image_panel.load_image()
+    #     event.Skip()
 
-    def on_set_data_directory(self, event):
-        dlg = wx.DirDialog(self, message="Choose a Data Export folder")
-        if dlg.ShowModal() == wx.ID_OK:
-            self.datadir = dlg.GetPath()
-        dlg.Destroy()
-        print(self.datadir)
+    # def on_set_data_directory(self, event):
+    #     dlg = wx.DirDialog(self, message="Choose a Data Export folder")
+    #     if dlg.ShowModal() == wx.ID_OK:
+    #         self.datadir = dlg.GetPath()
+    #     dlg.Destroy()
+    #     print(self.datadir)
+    #     event.Skip()
+
+    def on_prior_image(self, event):
+        prior_index = self.project_spec['current_image_index'] - 1
+        self.project_spec['current_image_index'] = prior_index
+        self.load_current_image(event)
+
+    def on_next_image(self, event):
+        # Save the current table_spec before moving to the next image
+        self.save_table_spec()
+        next_index = self.project_spec['current_image_index'] + 1
+        self.project_spec['current_image_index'] = next_index
+        self.load_current_image(event)
+
+    def load_current_image(self, event):
+        current_image = self.project_spec['image_dir'] + "/" + \
+            self.project_spec['image_list'][self.project_spec['current_image_index']]
+        self.src_image = Image.open(current_image)
+        self.image_panel.src_image = self.src_image.copy()
+        self.image_panel.load_image()
+        self.tbl_grid.load_image(self.src_image.copy())
+        self.tbl_grid.draw_grid()
+        self.image_panel.Refresh()
         event.Skip()
 
     def on_project_settings_click(self, event):
-        print("on_menu_settings_click")
         dlg = FmtkTableMinerProjectDlg(self)
         if dlg.ShowModal() == wx.ID_OK:
-            # Transfer the column labels to the table grid
-            # dlg.on_save_column_labels_dlg(event)
-            # Finally, redraw the image
-            self.tbl_grid.draw_grid()
-            self.image_panel.src_image = self.tbl_grid.return_image()
+            # Save the project settings to the self.project_spec,
+            # and save the project_spec to a YAML file.
+            self.project_spec['title'] = dlg.project_title.GetValue()
+            self.project_spec['description'] = dlg.project_description.GetValue()
+            self.project_spec['image_dir'] = dlg.project_image_dir.GetValue()
+            self.project_spec['data_dir'] = dlg.project_data_dir.GetValue()
+            self.project_spec['column_labels'] = self.gridcol2list(
+                dlg.project_column_labels)
+            self.project_spec['show_column_labels'] = dlg.project_show_column_labels.GetValue(
+            )
+            self.project_spec['nlp_tags'] = self.gridcol2list(
+                dlg.project_nlp_tags)
+            self.project_spec['semicolon_delimiters'] = dlg.project_semicolon_delimiters.GetValue(
+            )
+            self.project_spec['export_formats'] = self.gather_export_formats(dlg)
+            self.project_spec['image_list'] = dlg.image_list
+            self.project_spec['current_image_index'] = dlg.current_image_index
+            self.project_spec['done_image_list'] = dlg.done_image_list
+            self.save_project_spec()
+            # TODO: Finally, redraw the image grid if exists.
+            # self.tbl_grid.draw_grid()
+            # self.image_panel.src_image = self.tbl_grid.return_image()
+            if self.project_spec['show_column_labels']:
+                self.tbl_grid.show_labels = True
+            else:
+                self.tbl_grid.show_labels = False
+            self.tbl_grid.column_labels = self.project_spec['column_labels']
+            current_image = self.project_spec['image_dir'] + "/" + \
+                self.project_spec['image_list'][self.project_spec['current_image_index']]
+            print(current_image)
+            self.src_image = Image.open(current_image)
+            self.image_panel.src_image = self.src_image.copy()
             self.image_panel.load_image()
+            self.tbl_grid.load_image(self.src_image.copy())
+            self.tbl_grid.draw_grid()
             self.image_panel.Refresh()
+        dlg.Destroy()
         event.Skip()
+
+    # Save the project_spec to a YAML file.
+    def save_project_spec(self):
+        with wx.FileDialog(self, "Project Spec filename ('.yml' ext to be added)",
+                           defaultFile="project_spec.yml",
+                           wildcard="Project YAML files (*.yml)|*.yml",
+                           style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) \
+                as fileDialog:
+            if fileDialog.ShowModal() == wx.ID_CANCEL:
+                return     # the user changed mind
+            # save the current contents in the file
+            self.project_spec_file = fileDialog.GetPath()
+            try:
+                with open(self.project_spec_file, 'w') as outfile:
+                    yaml.dump(self.project_spec, outfile,
+                              default_flow_style=False)
+            except IOError:
+                wx.LogError("Cannot save current data in file '%s'."
+                            % self.project_spec_file)
+
+    # Load the project_spec from a YAML file.
+    def load_project_spec(self):
+        with wx.FileDialog(self, "Open Project Spec file",
+                           wildcard="Project YAML files (*.yml)|*.yml",
+                           style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) \
+                as fileDialog:
+            if fileDialog.ShowModal() == wx.ID_CANCEL:
+                return     # the user changed mind
+            # Proceed loading the file chosen by the user
+            self.project_spec_file = fileDialog.GetPath()
+            try:
+                with open(self.project_spec_file, 'r') as infile:
+                    self.project_spec = yaml.safe_load(infile)
+            except IOError:
+                wx.LogError("Cannot open file '%s'." % self.project_spec_file)
+            # self.on_project_settings_click(None)
+
+    def save_table_spec(self):
+        # Output file name is scr_image filenane with 'json' extension
+        # and saved to the data directory.
+        tblspec_filename = self.project_spec['data_dir'] + "/" + \
+            self.project_spec['image_list'][self.project_spec['current_image_index']].split(
+                ".")[0]
+        json_export_filename = tblspec_filename + ".json"
+        xml_export_filename = tblspec_filename + ".xml"
+        # Prepare the table spec for saving.
+        table_spec = self.prepare_tablespec_for_save()
+        # Save the table spec to a JSON file.
+        try:
+            with open(json_export_filename, 'w') as outfile:
+                json.dump(table_spec, outfile, indent=4)
+        except IOError:
+            wx.LogError("Cannot save current data in file '%s'."
+                        % json_export_filename)
+        # Save the table spec to an XML file.
+        try:
+            with open(xml_export_filename, 'w') as outfile:
+                rooted_table_spec = {'table_spec': table_spec}
+                xtd.unparse(rooted_table_spec, pretty=True, output=outfile)
+        except IOError:
+            wx.LogError("Cannot save current data in file '%s'."
+                        % xml_export_filename)
+
+    def prepare_tablespec_for_save(self):
+        # Table_spec Root
+        # + Src_image filename
+        # + Project_spec filename
+        # + Image size
+        # + Table bounding box
+        # + Row offsets
+        # + Column offsets
+        # + OCR/GT text
+        # + NLP tagged text
+        table_spec = {}
+        table_spec['src_image'] = self.project_spec['image_list'][self.project_spec['current_image_index']]
+        table_spec['project_spec'] = self.project_spec_file
+        table_spec['image_size'] = self.src_image.size
+        table_spec['table_bbox'] = self.tbl_grid.get_bbox_tuple()
+        table_spec['row_offsets'] = self.tbl_grid.row_offsets
+        table_spec['column_offsets'] = self.tbl_grid.column_offsets
+        table_spec['ocr_text'] = self.tbl_grid.cell_ocrgt_texts
+        table_spec['nlp_text'] = self.tbl_grid.cell_nlpx_texts
+        return table_spec
+
+    def gridcol2list(self, grid):
+        list = []
+        for i in range(grid.GetNumberRows()):
+            if grid.GetCellValue(i, 0) != '':
+                list.append(grid.GetCellValue(i, 0))
+        return list
+
+    def gather_export_formats(self, dlg):
+        formats = []
+        if dlg.project_csv_export.GetValue():
+            formats.append('csv')
+        if dlg.project_json_export.GetValue():
+            formats.append('json')
+        if dlg.project_xml_export.GetValue():
+            formats.append('xml')
+        if dlg.project_html_export.GetValue():
+            formats.append('html')
+        return formats
 
     def on_quit_app(self, event):
-        event.Skip()
-
-
-class FmtkTableMinerColumnLabelDlg(FmtkTableMinerColumnLabelDialog):
-    def __init__(self, parent):
-        FmtkTableMinerColumnLabelDialog.__init__(self, parent)
-        self.parent = parent
-        # self.app = self.parent.image_panel.app
-
-    # Virtual event handlers
-    def on_save_column_labels_dlg(self, event):
-        # Transfer the column labels to the table grid
-        num_columns = self.parent.tbl_grid.get_number_of_columns()
-        for i in range(num_columns):
-            self.parent.tbl_grid.set_column_label(
-                i + 1, self.tbl_grid_props.GetCellValue(i, 0))
-        self.parent.tbl_grid.show_labels = self.chk_show_labels.GetValue()
-        self.Close()
-        event.Skip()
-
-    def on_column_label_dlg_init(self, event):
-        num_columns = self.parent.tbl_grid.get_number_of_columns()
-        self.tbl_grid_props.InsertRows(numRows=num_columns)
-        for i in range(num_columns):
-            col_num = i + 1
-            col_label = self.parent.tbl_grid.get_column_label(col_num)
-            self.tbl_grid_props.SetCellValue(i, 0, col_label)
-        self.on_resize_adjust_column_label(event)
-        self.tbl_grid_props.SetFocus()
-        self.chk_show_labels.SetValue(self.parent.tbl_grid.show_labels)
-        event.Skip()
-
-    def on_resize_adjust_column_label(self, event):
-        self.tbl_grid_props.SetColSize(0, self.GetSize()[0] - 40)
-        event.Skip()
-
-    def on_cancel_column_labels_dlg(self, event):
-        self.Close()
         event.Skip()
 
 
@@ -569,18 +731,101 @@ class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
         FmtkTableMinerProjectDialog.__init__(self, parent)
         # self.parent = parent
         # self.app = self.parent.image_panel.app
+        self.image_list = []
+        self.current_image_index = 0
+        self.project_spec_file = parent.project_spec_file
+        self.done_image_list = []
+        if self.project_spec_file != '':
+            self.project_title.SetValue(str(parent.project_spec['title']))
+            self.project_description.SetValue(
+                str(parent.project_spec['description']))
+            self.project_image_dir.SetValue(
+                str(parent.project_spec['image_dir']))
+            self.project_data_dir.SetValue(
+                str(parent.project_spec['data_dir']))
+            self.project_semicolon_delimiters.SetValue(
+                parent.project_spec['semicolon_delimiters'])
+            self.project_show_column_labels.SetValue(
+                parent.project_spec['show_column_labels'])
+            self.project_csv_export.SetValue(
+                'csv' in parent.project_spec['export_formats'])
+            self.project_json_export.SetValue(
+                'json' in parent.project_spec['export_formats'])
+            self.project_xml_export.SetValue(
+                'xml' in parent.project_spec['export_formats'])
+            self.project_html_export.SetValue(
+                'html' in parent.project_spec['export_formats'])
+            for i in range(len(parent.project_spec['column_labels'])):
+                self.project_column_labels.SetCellValue(
+                    i, 0, parent.project_spec['column_labels'][i])
+            for i in range(len(parent.project_spec['nlp_tags'])):
+                self.project_nlp_tags.SetCellValue(
+                    i, 0, parent.project_spec['nlp_tags'][i])
+            self.image_list = parent.project_spec['image_list']
+            self.done_image_list = parent.project_spec['done_image_list']
+            self.update_image_process_tally()
+
+    def on_set_image_directory(self, event):
+        dlg = wx.DirDialog(self, message="Choose a Document Image folder")
+        if dlg.ShowModal() == wx.ID_OK:
+            self.project_image_dir.SetValue(str(dlg.GetPath()))
+            self.image_list = []
+        dlg.Destroy()
+        print(self.project_image_dir.GetValue())
+        image_files = sorted(os.listdir(self.project_image_dir.GetValue()))
+        for file in image_files:
+            if os.path.splitext(file)[1].lower() in \
+                    ['.jpg', '.jpeg', '.png', '.tif', '.tiff']:
+                self.image_list.append(file)
+        # print(self.image_list)
+        self.current_image_index = 0
+        self.update_image_process_tally()
+        event.Skip()
+
+    def on_set_data_directory(self, event):
+        dlg = wx.DirDialog(self, message="Choose a Data Export folder")
+        if dlg.ShowModal() == wx.ID_OK:
+            self.project_data_dir.SetValue(str(dlg.GetPath()))
+        dlg.Destroy()
+        print(self.project_data_dir.GetValue())
+        event.Skip()
+
+    def update_image_process_tally(self):
+        self.project_images_processed.SetValue(
+            str(len(self.done_image_list)) + " : " + 
+            str(len(self.image_list)))
 
     # Virtual event handlers
     def on_add_label_click(self, event):
+        selected_row = self.tbl_grid_col_labels.GetGridCursorRow()
+        if selected_row == -1:
+            selected_row = self.tbl_grid_col_labels.GetNumberRows()
+            self.tbl_grid_col_labels.AppendRows(numRows=1)
+        else:
+            selected_row += 1
+            self.tbl_grid_col_labels.InsertRows(pos=selected_row, numRows=1)
         event.Skip()
 
     def on_delete_label_click(self, event):
+        selected_row = self.tbl_grid_col_labels.GetGridCursorRow()
+        if selected_row != -1:
+            self.tbl_grid_col_labels.DeleteRows(pos=selected_row, numRows=1)
         event.Skip()
 
     def on_add_tag_click(self, event):
+        selected_row = self.tbl_grid_nlp_tags.GetGridCursorRow()
+        if selected_row == -1:
+            selected_row = self.tbl_grid_nlp_tags.GetNumberRows()
+            self.tbl_grid_nlp_tags.AppendRows(numRows=1)
+        else:
+            selected_row += 1
+            self.tbl_grid_nlp_tags.InsertRows(pos=selected_row, numRows=1)
         event.Skip()
 
     def on_delete_tag_click(self, event):
+        selected_row = self.tbl_grid_nlp_tags.GetGridCursorRow()
+        if selected_row != -1:
+            self.tbl_grid_nlp_tags.DeleteRows(pos=selected_row, numRows=1)
         event.Skip()
 
 
