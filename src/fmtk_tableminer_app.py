@@ -92,7 +92,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self, wx.ID_ANY)
         main_sizer.Insert(1, self.image_panel, 1, wx.EXPAND | wx.LEFT)
         self.image_panel.task_profile = "no_task"
-        self.image_panel.Bind(wx.EVT_ENTER_WINDOW, self.on_image_panel_hover_enter)
+        self.image_panel.Bind(wx.EVT_ENTER_WINDOW,
+                              self.on_image_panel_hover_enter)
         self.tool_cursor = wx.Cursor(wx.CURSOR_ARROW)
         # Set a large but arbitary max_pixel size for the panel's image
         # self.image_panel.max_pixels = 2000000
@@ -563,6 +564,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     def on_next_image(self, event):
         # Save the current table_spec before moving to the next image
         self.save_table_spec()
+        self.tbl_grid.clear_grid()
+        self.table_spec = {}
         next_index = self.project_spec['current_image_index'] + 1
         self.project_spec['current_image_index'] = next_index
         self.load_current_image(event)
@@ -595,7 +598,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
                 dlg.project_nlp_tags)
             self.project_spec['semicolon_delimiters'] = dlg.project_semicolon_delimiters.GetValue(
             )
-            self.project_spec['export_formats'] = self.gather_export_formats(dlg)
+            self.project_spec['export_formats'] = self.gather_export_formats(
+                dlg)
             self.project_spec['image_list'] = dlg.image_list
             self.project_spec['current_image_index'] = dlg.current_image_index
             self.project_spec['done_image_list'] = dlg.done_image_list
@@ -665,7 +669,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         json_export_filename = tblspec_filename + ".json"
         xml_export_filename = tblspec_filename + ".xml"
         # Prepare the table spec for saving.
-        table_spec = self.prepare_tablespec_for_save()
+        table_spec = self.prepare_tablespec_for_save('json')
         # Save the table spec to a JSON file.
         try:
             with open(json_export_filename, 'w') as outfile:
@@ -674,6 +678,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             wx.LogError("Cannot save current data in file '%s'."
                         % json_export_filename)
         # Save the table spec to an XML file.
+        table_spec = self.prepare_tablespec_for_save('xml')
         try:
             with open(xml_export_filename, 'w') as outfile:
                 rooted_table_spec = {'table_spec': table_spec}
@@ -682,7 +687,20 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             wx.LogError("Cannot save current data in file '%s'."
                         % xml_export_filename)
 
-    def prepare_tablespec_for_save(self):
+    def adjust_text_dicts_for_xml_export(self, text_dict):
+        # The keys of the text_dict dict are integers and need to be prefixed with 'r' for XML export.
+        tweaked_text = {}
+        for key in text_dict.keys():
+            rkey = 'r' + str(key)
+            # tweaked_text[rkey] = text_dict[key]
+        # The keys of the text_dict values are integers and need to be prefixed with 'c' for XML export.
+            tweaked_text[rkey] = {}
+            for key2 in text_dict[key].keys():
+                ckey = 'c' + str(key2)
+                tweaked_text[rkey][ckey] = text_dict[key][key2]
+        return tweaked_text
+
+    def prepare_tablespec_for_save(self, export_type):
         # Table_spec Root
         # + Src_image filename
         # + Project_spec filename
@@ -695,12 +713,24 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         table_spec = {}
         table_spec['src_image'] = self.project_spec['image_list'][self.project_spec['current_image_index']]
         table_spec['project_spec'] = self.project_spec_file
-        table_spec['image_size'] = self.src_image.size
-        table_spec['table_bbox'] = self.tbl_grid.get_bbox_tuple()
-        table_spec['row_offsets'] = self.tbl_grid.row_offsets
-        table_spec['column_offsets'] = self.tbl_grid.column_offsets
-        table_spec['ocr_text'] = self.tbl_grid.cell_ocrgt_texts
-        table_spec['nlp_text'] = self.tbl_grid.cell_nlpx_texts
+        if export_type == 'xml':
+            table_spec['image_size'] = str(self.src_image.size)
+            table_spec['table_bbox'] = str(self.tbl_grid.get_bbox_tuple())
+            table_spec['row_offsets'] = str(self.tbl_grid.row_offsets)
+            table_spec['column_offsets'] = str(self.tbl_grid.column_offsets)
+        else:
+            table_spec['image_size'] = self.src_image.size
+            table_spec['table_bbox'] = self.tbl_grid.get_bbox_tuple()
+            table_spec['row_offsets'] = self.tbl_grid.row_offsets
+            table_spec['column_offsets'] = self.tbl_grid.column_offsets
+        if export_type == 'xml':
+            table_spec['ocr_text'] = self.adjust_text_dicts_for_xml_export(
+                self.tbl_grid.cell_ocrgt_texts)
+            table_spec['nlp_text'] = self.adjust_text_dicts_for_xml_export(
+                self.tbl_grid.cell_nlpx_texts)
+        else:
+            table_spec['ocr_text'] = self.tbl_grid.cell_ocrgt_texts
+            table_spec['nlp_text'] = self.tbl_grid.cell_nlpx_texts
         return table_spec
 
     def gridcol2list(self, grid):
@@ -792,7 +822,7 @@ class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
 
     def update_image_process_tally(self):
         self.project_images_processed.SetValue(
-            str(len(self.done_image_list)) + " : " + 
+            str(len(self.done_image_list)) + " : " +
             str(len(self.image_list)))
 
     # Virtual event handlers

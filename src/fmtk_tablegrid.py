@@ -98,6 +98,23 @@ class FmtkTableGrid(object):
         else:
             self.column_labels = {}
 
+    def clear_grid(self):
+        self.x = 0
+        self.y = 0
+        self.width = 0
+        self.height = 0
+        self.row_offsets = []
+        self.column_offsets = []
+        self.row_lines = {}
+        self.column_lines = {}
+        self.cell_bboxes = {}
+        self.cell_ocrgt_texts = {}
+        self.cell_nlpx_texts = {}
+        self.cell_ocrgt_locks = {}
+        self.cell_nlpx_locks = {}
+        self.cells_edited = False
+        self.cell_to_highlight = None
+
     def load_image(self, image):
         # If image is a filename then open it
         if isinstance(image, str) and os.path.isfile(image):

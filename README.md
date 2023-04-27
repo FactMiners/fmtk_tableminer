@@ -41,7 +41,7 @@ __Best Practice Tip__: While we do our best to support step-wise table structure
 Prospective users are encouraged to use the wiki and issues features of the FmtkTableMiner GitHub repository to resolve issues or provide feedback and feature requests. Code contributions welcome.
 
 ## Release Note
-This initial drop of the __FmtkTableMiner__ tool is essentially a _Preview_ release to demonstrate the UI/UX of the upcoming functional release. _At present, only the project-level configuration settings are persistently saved to disk._ Individual page table structures and GTS/NLP text extraction data are __NOT saved to disk__! This all important feature is in development and will be released soon.
+This initial drop of the __FmtkTableMiner__ tool is essentially a _Preview_ release to demonstrate the UI/UX of the upcoming functional release. _At present, the project-level configuration settings and the page-specific JSON and XML data export formats are supported and persistently saved to disk._ The HTML and CSV data export formats are in development and will be released soon.
 
 Happy, Healthy Vibes from Colorado,
 -: __Jim Salmons__ :-
