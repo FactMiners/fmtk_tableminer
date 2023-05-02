@@ -122,7 +122,8 @@ class RubberbandPanel(wx.ScrolledWindow):
         #  'ml_tim' max_pixels compliant page image to be written to the
         #  model training dataset.
         self.scaled_image = self.scaled_image.resize(self.resize_dimensions,
-                                                     Image.Resampling.BICUBIC)
+                                                    #  Image.Resampling.BICUBIC)
+                                                     Image.BICUBIC)
         self.scaled_img2buffer = wx.Image(self.scaled_image.size[0],
                                           self.scaled_image.size[1])
         self.scaled_img2buffer.SetData(

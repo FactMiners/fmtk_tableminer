@@ -26,7 +26,7 @@ import xmltodict as xtd
 from pathlib import Path
 import os
 import copy
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import fmtk_rubberband_panel as rbp
 from fmtk_tableminer_gui import FmtkTableMinerFrame
 from fmtk_tableminer_gui import FmtkTableMinerProjectDialog
@@ -232,29 +232,28 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         event.Skip()
 
     def on_image_panel_hover_enter(self, event):
-        match self.image_panel.task_profile:
-            case "rubberband_on":
-                wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
-            case "row_sep":
-                cursor_image = wx.Image("resources/row-sep_cursor.png",
-                                        wx.BITMAP_TYPE_ANY)
-                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 11)
-                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 20)
-                cursor = wx.Cursor(cursor_image)
-                wx.SetCursor(cursor)
-            case "col_sep":
-                cursor_image = wx.Image("resources/col-sep_cursor.png",
-                                        wx.BITMAP_TYPE_ANY)
-                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 0)
-                cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 11)
-                cursor = wx.Cursor(cursor_image)
-                wx.SetCursor(cursor)
-            case "del_sep":
-                wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
-            case "sel_cell":
-                wx.SetCursor(wx.Cursor(wx.CURSOR_QUESTION_ARROW))
-            case _:
-                wx.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
+        if self.image_panel.task_profile == "rubberband_on":
+            wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
+        elif self.image_panel.task_profile == "row_sep":
+            cursor_image = wx.Image("resources/row-sep_cursor.png",
+                                    wx.BITMAP_TYPE_ANY)
+            cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 11)
+            cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 20)
+            cursor = wx.Cursor(cursor_image)
+            wx.SetCursor(cursor)
+        elif self.image_panel.task_profile == "col_sep":
+            cursor_image = wx.Image("resources/col-sep_cursor.png",
+                                    wx.BITMAP_TYPE_ANY)
+            cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_X, 0)
+            cursor_image.SetOption(wx.IMAGE_OPTION_CUR_HOTSPOT_Y, 11)
+            cursor = wx.Cursor(cursor_image)
+            wx.SetCursor(cursor)
+        elif self.image_panel.task_profile == "del_sep":
+            wx.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
+        elif self.image_panel.task_profile == "sel_cell":
+            wx.SetCursor(wx.Cursor(wx.CURSOR_QUESTION_ARROW))
+        else:
+            wx.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
         event.Skip()
 
     def when_leaving_tbl_bbox_mode(self, event):
@@ -862,7 +861,7 @@ class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
 # Main
 if __name__ == "__main__":
     app = FmtkTableMinerApp()
-    # app.SetAppName("Fmtk TableMiner")
-    # wx.lib.inspection.InspectionTool().Show()
+    app.SetAppName("Fmtk TableMiner")
+    wx.lib.inspection.InspectionTool().Show()
 
     app.MainLoop()

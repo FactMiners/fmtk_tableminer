@@ -61,7 +61,11 @@ class FmtkTableGrid(object):
         self.cell_nlpx_locks = {}
         if not hasattr(self, "column_labels"):
             self.column_labels = {}  # {column_number: label}
-        self.column_label_font = ImageFont.truetype("Arial.ttf", 24)
+        if 'wxMac' in wx.PlatformInfo:
+            labelfont = "Arial.ttf"
+        else:
+            labelfont = "arial.ttf"
+        self.column_label_font = ImageFont.truetype(labelfont, 24)
         self.show_labels = False
         self.cell_to_highlight = None
         self.cells_edited = False
@@ -664,7 +668,7 @@ class FmtkTableGrid(object):
 ####
 if __name__ == "__main__":
     # Create a table grid object
-    tbl_grid = Fmtk_TableGrid("tbl_test-image.png",
+    tbl_grid = FmtkTableGrid("tbl_test-image.png",
                               "tbl_test-tblspec.json")
     tbl_grid.run_tests()
 
