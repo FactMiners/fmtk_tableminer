@@ -27,7 +27,7 @@ from pathlib import Path
 import os
 import copy
 from PIL import Image
-import fmtk_rubberband_panel as rbp
+# import fmtk_rubberband_panel as rbp
 from fmtk_tableminer_gui import FmtkTableMinerFrame
 from fmtk_tableminer_gui import FmtkTableMinerProjectDialog
 from fmtk_tablegrid import FmtkTableGrid
@@ -87,10 +87,10 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             "400%": 4.0,
         }
         # Add the rubberband panel
-        main_sizer = self.toolbar.GetContainingSizer()
-        self.image_panel = rbp.RubberbandPanel(
-            self, wx.ID_ANY)
-        main_sizer.Insert(1, self.image_panel, 1, wx.EXPAND | wx.LEFT)
+        # main_sizer = self.toolbar.GetContainingSizer()
+        # self.image_panel = rbp.RubberbandPanel(
+        #     self, wx.ID_ANY)
+        # main_sizer.Insert(1, self.image_panel, 1, wx.EXPAND | wx.LEFT)
         self.image_panel.task_profile = "no_task"
         self.image_panel.Bind(wx.EVT_ENTER_WINDOW,
                               self.on_image_panel_hover_enter)
@@ -213,23 +213,25 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     # toolbar modes
     def on_tbar_tool_change(self, event):
         print("on_tbar_tool_changed")
-        if event.GetId() == tb_TBL_BBOX and self.image_panel.task_profile != "rubberband_on":
-            self.start_table_bbox_mode(event)
-        elif event.GetId() == tb_ROW_SEP and self.image_panel.task_profile != "row_sep":
-            self.start_row_sep_mode(event)
-        elif event.GetId() == tb_COL_SEP and self.image_panel.task_profile != "col_sep":
-            self.start_col_sep_mode(event)
-        elif event.GetId() == tb_DEL_SEP and self.image_panel.task_profile != "del_sep":
-            self.start_del_sep_mode(event)
-        elif event.GetId() == tb_SEL_CELL and self.image_panel.task_profile != "sel_cell":
+        if event.GetId() == tb_SEL_CELL and self.image_panel.task_profile != "sel_cell":
             self.start_sel_cell_mode(event)
-        event.Skip()
+        else:
+            self.tbl_grid.cell_to_highlight = None
+            if event.GetId() == tb_TBL_BBOX and self.image_panel.task_profile != "rubberband_on":
+                self.start_table_bbox_mode(event)
+            elif event.GetId() == tb_ROW_SEP and self.image_panel.task_profile != "row_sep":
+                self.start_row_sep_mode(event)
+            elif event.GetId() == tb_COL_SEP and self.image_panel.task_profile != "col_sep":
+                self.start_col_sep_mode(event)
+            elif event.GetId() == tb_DEL_SEP and self.image_panel.task_profile != "del_sep":
+                self.start_del_sep_mode(event)
+        # event.Skip()
 
     def on_tbar_hover_enter(self, event):
         self.image_panel.task_limbo = self.image_panel.task_profile
         # self.tool_cursor = self.GetCursor()
         wx.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
-        event.Skip()
+        # event.Skip()
 
     def on_image_panel_hover_enter(self, event):
         if self.image_panel.task_profile == "rubberband_on":
@@ -556,29 +558,71 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     #     event.Skip()
 
     def on_prior_image(self, event):
-        prior_index = self.project_spec['current_image_index'] - 1
-        self.project_spec['current_image_index'] = prior_index
+        # Save the current table_spec before moving to the next image
+        self.update_project_spec(-1)
+        self.tbl_grid.clear_grid()
         self.load_current_image(event)
 
     def on_next_image(self, event):
         # Save the current table_spec before moving to the next image
-        self.save_table_spec()
+        self.update_project_spec(1)
         self.tbl_grid.clear_grid()
-        self.table_spec = {}
-        next_index = self.project_spec['current_image_index'] + 1
-        self.project_spec['current_image_index'] = next_index
         self.load_current_image(event)
 
+    def update_project_spec(self, increment):
+        # Update the project_spec with the current table_spec
+        self.save_table_spec()
+        self.save_tbl_grid_image()
+        self.project_spec['current_image_index'] += increment
+        self.project_spec['current_image_index'] = min(
+            self.project_spec['current_image_index'], len(self.project_spec['image_list']) - 1)
+        self.project_spec['current_image_index'] = max(
+            self.project_spec['current_image_index'], 0)
+        self.update_project_spec_file()
+
     def load_current_image(self, event):
-        current_image = self.project_spec['image_dir'] + "/" + \
-            self.project_spec['image_list'][self.project_spec['current_image_index']]
-        self.src_image = Image.open(current_image)
-        self.image_panel.src_image = self.src_image.copy()
-        self.image_panel.load_image()
-        self.tbl_grid.load_image(self.src_image.copy())
-        self.tbl_grid.draw_grid()
-        self.image_panel.Refresh()
-        event.Skip()
+        # If there is an existing table_spec for this image, load it and its image
+        # Otherwise, load the image and create a new table_spec
+        current_image_root = os.path.splitext(self.project_spec['image_list']
+                                              [self.project_spec['current_image_index']])[0]
+        table_spec_fname = self.project_spec['data_dir'] + "/" + \
+            current_image_root + ".json"
+        if os.path.exists(table_spec_fname):
+            self.load_table_spec(event)
+            bbox_image_fname = self.project_spec['data_dir'] + \
+                "/training_images/" + current_image_root + "_bboxes.png"
+            if os.path.exists(bbox_image_fname):
+                self.src_image = Image.open(bbox_image_fname)
+                self.image_panel.src_image = self.src_image.copy()
+                self.image_panel.load_image()
+                self.tbl_grid.load_image(self.src_image.copy())
+                self.tbl_grid.draw_grid()
+                self.image_panel.Refresh()
+        else:
+            self.tbl_grid.clear_grid()
+            self.table_spec = {}
+            current_image = self.project_spec['image_dir'] + "/" + \
+                self.project_spec['image_list'][self.project_spec['current_image_index']]
+            self.src_image = Image.open(current_image)
+            self.image_panel.src_image = self.src_image.copy()
+            self.image_panel.load_image()
+            self.tbl_grid.load_image(self.src_image.copy())
+            self.image_panel.Refresh()
+        if event not in [None, ""]:
+            event.Skip()
+
+    def load_table_spec(self, event):
+        tbl_spec_fname = self.project_spec['image_list'][self.project_spec['current_image_index']].split(".")[
+            0] + ".json"
+        table_spec_fname = self.project_spec['data_dir'] + "/" + tbl_spec_fname
+        if os.path.exists(table_spec_fname):
+            with open(table_spec_fname, 'r') as f:
+                self.table_spec = json.load(f)
+        else:
+            self.table_spec = {}
+        self.tbl_grid.load_spec_from_dict(self.table_spec)
+        if event not in [None, ""]:
+            event.Skip()
 
     def on_project_settings_click(self, event):
         dlg = FmtkTableMinerProjectDlg(self)
@@ -655,20 +699,39 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             try:
                 with open(self.project_spec_file, 'r') as infile:
                     self.project_spec = yaml.safe_load(infile)
+                    self.tbl_grid.show_labels = self.project_spec['show_column_labels']
+                    self.tbl_grid.column_labels = self.project_spec['column_labels']
             except IOError:
                 wx.LogError("Cannot open file '%s'." % self.project_spec_file)
-            # self.on_project_settings_click(None)
+            self.load_current_image(None)
 
+    # Update the project_spec with the current image index and append done_image_list.
+    def update_project_spec_file(self):
+        try:
+            with open(self.project_spec_file, 'w') as outfile:
+                yaml.dump(self.project_spec, outfile,
+                            default_flow_style=False)
+        except IOError:
+            wx.LogError("Cannot save current data in file '%s'."
+                        % self.project_spec_file)
+
+
+    # Save the table_spec to a JSON file.
     def save_table_spec(self):
         # Output file name is scr_image filenane with 'json' extension
         # and saved to the data directory.
-        tblspec_filename = self.project_spec['data_dir'] + "/" + \
-            self.project_spec['image_list'][self.project_spec['current_image_index']].split(
+        tblspec_filename = self.project_spec['image_list'][self.project_spec['current_image_index']].split(
                 ".")[0]
         json_export_filename = tblspec_filename + ".json"
         xml_export_filename = tblspec_filename + ".xml"
+        # Add the json filename to the project_spec done_image_list.
+        if json_export_filename not in self.project_spec['done_image_list']:
+            self.project_spec['done_image_list'].append(json_export_filename)
         # Prepare the table spec for saving.
         table_spec = self.prepare_tablespec_for_save('json')
+        # Append the data_dir path before saving the table spec.
+        json_export_filename = self.project_spec['data_dir'] + "/" + json_export_filename
+        xml_export_filename = self.project_spec['data_dir'] + "/" + xml_export_filename
         # Save the table spec to a JSON file.
         try:
             with open(json_export_filename, 'w') as outfile:
@@ -685,6 +748,16 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         except IOError:
             wx.LogError("Cannot save current data in file '%s'."
                         % xml_export_filename)
+
+    def save_tbl_grid_image(self):
+        # Output file name is scr_image filenane with 'png' extension
+        # and saved to the taining_images subdirectory of the data directory.
+        cur_index = self.project_spec['current_image_index']
+        fname_root = self.project_spec['image_list'][cur_index]
+        tbl_grid_filename = self.project_spec['data_dir'] + "/training_images/" + \
+            fname_root.split(".")[0]
+        tbl_grid_filename = tbl_grid_filename + "_bboxes.png"
+        self.tbl_grid.save_image(tbl_grid_filename)
 
     def adjust_text_dicts_for_xml_export(self, text_dict):
         # The keys of the text_dict dict are integers and need to be prefixed with 'r' for XML export.
@@ -707,8 +780,11 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         # + Table bounding box
         # + Row offsets
         # + Column offsets
+        # + Column labels
         # + OCR/GT text
         # + NLP tagged text
+        # + OCR/GT text locks
+        # + NLP tagged text locks
         table_spec = {}
         table_spec['src_image'] = self.project_spec['image_list'][self.project_spec['current_image_index']]
         table_spec['project_spec'] = self.project_spec_file
@@ -722,14 +798,21 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             table_spec['table_bbox'] = self.tbl_grid.get_bbox_tuple()
             table_spec['row_offsets'] = self.tbl_grid.row_offsets
             table_spec['column_offsets'] = self.tbl_grid.column_offsets
+        table_spec['column_labels'] = self.project_spec['column_labels']
         if export_type == 'xml':
-            table_spec['ocr_text'] = self.adjust_text_dicts_for_xml_export(
+            table_spec['cell_ocrgt_texts'] = self.adjust_text_dicts_for_xml_export(
                 self.tbl_grid.cell_ocrgt_texts)
-            table_spec['nlp_text'] = self.adjust_text_dicts_for_xml_export(
+            table_spec['cell_nlpx_texts'] = self.adjust_text_dicts_for_xml_export(
                 self.tbl_grid.cell_nlpx_texts)
+            table_spec['cell_ocrgt_locks'] = self.adjust_text_dicts_for_xml_export(
+                self.tbl_grid.cell_ocrgt_locks)
+            table_spec['cell_nlpx_locks'] = self.adjust_text_dicts_for_xml_export(
+                self.tbl_grid.cell_nlpx_locks)
         else:
-            table_spec['ocr_text'] = self.tbl_grid.cell_ocrgt_texts
-            table_spec['nlp_text'] = self.tbl_grid.cell_nlpx_texts
+            table_spec['cell_ocrgt_texts'] = self.tbl_grid.cell_ocrgt_texts
+            table_spec['cell_nlpx_texts'] = self.tbl_grid.cell_nlpx_texts
+            table_spec['cell_ocrgt_locks'] = self.tbl_grid.cell_ocrgt_locks
+            table_spec['cell_nlpx_locks'] = self.tbl_grid.cell_nlpx_locks
         return table_spec
 
     def gridcol2list(self, grid):
@@ -862,6 +945,6 @@ class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
 if __name__ == "__main__":
     app = FmtkTableMinerApp()
     app.SetAppName("Fmtk TableMiner")
-    wx.lib.inspection.InspectionTool().Show()
+    # wx.lib.inspection.InspectionTool().Show()
 
     app.MainLoop()

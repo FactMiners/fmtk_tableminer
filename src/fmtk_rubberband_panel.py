@@ -18,7 +18,7 @@ standalone = False
 
 class RubberbandPanel(wx.ScrolledWindow):
 
-    def __init__(self, parent, any_id):
+    def __init__(self, parent, any_id, pos=wx.DefaultPosition, size=wx.DefaultSize, style=wx.HSCROLL|wx.VSCROLL, name='ID_RBPANEL'):
         wx.ScrolledWindow.__init__(self, parent, any_id, wx.DefaultPosition,
                                    wx.DefaultSize, wx.SUNKEN_BORDER |
                                    wx.HSCROLL | wx.VSCROLL, 'ID_RBPANEL')

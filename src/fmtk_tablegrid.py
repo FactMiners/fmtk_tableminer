@@ -72,16 +72,20 @@ class FmtkTableGrid(object):
 
     # Load the table specification from a dictionary
     def load_spec_from_dict(self, table_spec):
-        self.x = table_spec["x"]
-        self.y = table_spec["y"]
-        self.width = table_spec["width"]
-        self.height = table_spec["height"]
+        self.x = table_spec["table_bbox"][0]
+        self.y = table_spec["table_bbox"][1]
+        self.width = table_spec["table_bbox"][2]
+        self.height = table_spec["table_bbox"][3]
         self.row_offsets = table_spec["row_offsets"]
         self.column_offsets = table_spec["column_offsets"]
         if "column_labels" in table_spec:
             self.column_labels = table_spec["column_labels"]
         else:
             self.column_labels = {}
+        self.cell_ocrgt_texts = table_spec["cell_ocrgt_texts"]
+        self.cell_nlpx_texts = table_spec["cell_nlpx_texts"]
+        self.cell_ocrgt_locks = table_spec["cell_ocrgt_locks"]
+        self.cell_nlpx_locks = table_spec["cell_nlpx_locks"]
 
     # Load the table specification from a json file
     def load_spec_from_json(self, filename):
@@ -101,6 +105,10 @@ class FmtkTableGrid(object):
             self.column_labels = table_spec["column_labels"]
         else:
             self.column_labels = {}
+        self.cell_ocrgt_texts = table_spec["cell_ocrgt_texts"]
+        self.cell_nlpx_texts = table_spec["cell_nlpx_texts"]
+        self.cell_ocrgt_locks = table_spec["cell_ocrgt_locks"]
+        self.cell_nlpx_locks = table_spec["cell_nlpx_locks"]
 
     def clear_grid(self):
         self.x = 0
@@ -215,30 +223,30 @@ class FmtkTableGrid(object):
     def adjust_added_row_offsets(self, new_row_num):
         adjust_locks = self.confirm_row_lock_ajustment()
         for old_row_num in reversed(range(new_row_num, len(self.row_offsets) + 1)):
-            if old_row_num in self.cell_ocrgt_texts.keys():
-                self.cell_ocrgt_texts[old_row_num +
-                                      1] = self.cell_ocrgt_texts[old_row_num]
+            if str(old_row_num) in self.cell_ocrgt_texts.keys():
+                self.cell_ocrgt_texts[str(old_row_num +
+                                      1)] = self.cell_ocrgt_texts[str(old_row_num)]
                 if adjust_locks:
                     unlocks = {}
-                    for key in self.cell_ocrgt_locks[old_row_num].keys():
+                    for key in self.cell_ocrgt_locks[str(old_row_num)].keys():
                         unlocks[key] = False
-                    self.cell_ocrgt_locks[old_row_num + 1] = unlocks
-                    self.cell_nlpx_texts[old_row_num +
-                                         1] = self.cell_nlpx_texts[old_row_num]
-                    self.cell_nlpx_locks[old_row_num + 1] = unlocks
+                    self.cell_ocrgt_locks[str(old_row_num + 1)] = unlocks
+                    self.cell_nlpx_texts[str(old_row_num +
+                                         1)] = self.cell_nlpx_texts[str(old_row_num)]
+                    self.cell_nlpx_locks[str(old_row_num + 1)] = unlocks
                 else:
-                    self.cell_ocrgt_locks[old_row_num +
-                                          1] = self.cell_ocrgt_locks[old_row_num]
-                    self.cell_nlpx_texts[old_row_num +
-                                         1] = self.cell_nlpx_texts[old_row_num]
-                    self.cell_nlpx_locks[old_row_num +
-                                         1] = self.cell_nlpx_locks[old_row_num]
-                self.cell_bboxes[old_row_num +
-                                 1] = self.cell_bboxes[old_row_num]
-        self.cell_ocrgt_texts[new_row_num] = {}
-        self.cell_ocrgt_locks[new_row_num] = {}
-        self.cell_nlpx_texts[new_row_num] = {}
-        self.cell_nlpx_locks[new_row_num] = {}
+                    self.cell_ocrgt_locks[str(old_row_num +
+                                          1)] = self.cell_ocrgt_locks[str(old_row_num)]
+                    self.cell_nlpx_texts[str(old_row_num +
+                                         1)] = self.cell_nlpx_texts[str(old_row_num)]
+                    self.cell_nlpx_locks[str(old_row_num +
+                                         1)] = self.cell_nlpx_locks[str(old_row_num)]
+                self.cell_bboxes[str(old_row_num +
+                                 1)] = self.cell_bboxes[str(old_row_num)]
+        self.cell_ocrgt_texts[str(new_row_num)] = {}
+        self.cell_ocrgt_locks[str(new_row_num)] = {}
+        self.cell_nlpx_texts[str(new_row_num)] = {}
+        self.cell_nlpx_locks[str(new_row_num)] = {}
 
     def confirm_row_lock_ajustment(self):
         dlg = wx.MessageDialog(None, caption="Confirm Row Lock Adjustment?",
@@ -267,36 +275,36 @@ class FmtkTableGrid(object):
         adjust_locks = self.confirm_row_lock_ajustment()
         # Deleted row_col text is merged with the row above
         for column_num in range(1, len(self.column_offsets) + 2):
-            if column_num in self.cell_ocrgt_texts[deleted_row_num].keys():
-                self.cell_ocrgt_texts[deleted_row_num][column_num] = \
-                    self.cell_ocrgt_texts[deleted_row_num][column_num] + \
+            if str(column_num) in self.cell_ocrgt_texts[str(deleted_row_num)].keys():
+                self.cell_ocrgt_texts[str(deleted_row_num)][str(column_num)] = \
+                    self.cell_ocrgt_texts[str(deleted_row_num)][str(column_num)] + \
                     '\n' + \
-                    self.cell_ocrgt_texts[deleted_row_num + 1][column_num]
-            if column_num in self.cell_nlpx_texts[deleted_row_num].keys():
-                self.cell_nlpx_texts[deleted_row_num][column_num] = \
-                    self.cell_nlpx_texts[deleted_row_num][column_num] + \
+                    self.cell_ocrgt_texts[str(deleted_row_num + 1)][str(column_num)]
+            if str(column_num) in self.cell_nlpx_texts[str(deleted_row_num)].keys():
+                self.cell_nlpx_texts[str(deleted_row_num)][str(column_num)] = \
+                    self.cell_nlpx_texts[str(deleted_row_num)][str(column_num)] + \
                     '\n' + \
-                    self.cell_nlpx_texts[deleted_row_num + 1][column_num]
+                    self.cell_nlpx_texts[str(deleted_row_num + 1)][str(column_num)]
             if adjust_locks:
-                self.cell_ocrgt_locks[deleted_row_num][column_num] = False
-                self.cell_nlpx_locks[deleted_row_num][column_num] = False
+                self.cell_ocrgt_locks[str(deleted_row_num)][str(column_num)] = False
+                self.cell_nlpx_locks[str(deleted_row_num)][str(column_num)] = False
         # self.cell_ocrgt_texts[deleted_row_num - 1] = \
         #     self.cell_ocrgt_texts[deleted_row_num - 1] + \
         #     '\n' + self.cell_ocrgt_texts[deleted_row_num]
         for row_num in range(deleted_row_num + 1, len(self.cell_ocrgt_texts)):
-            if row_num in self.cell_ocrgt_texts.keys():
-                self.cell_ocrgt_texts[row_num] = self.cell_ocrgt_texts[row_num + 1]
+            if str(row_num) in self.cell_ocrgt_texts.keys():
+                self.cell_ocrgt_texts[str(row_num)] = self.cell_ocrgt_texts[str(row_num + 1)]
                 if adjust_locks:
                     unlocks = {}
-                    for key in self.cell_ocrgt_locks[row_num + 1].keys():
-                        unlocks[key] = False
-                    self.cell_ocrgt_locks[row_num] = unlocks
-                    self.cell_nlpx_texts[row_num] = self.cell_nlpx_texts[row_num + 1]
-                    self.cell_nlpx_locks[row_num] = unlocks
+                    for key in self.cell_ocrgt_locks[str(row_num + 1)].keys():
+                        unlocks[str(key)] = False
+                    self.cell_ocrgt_locks[str(row_num)] = unlocks
+                    self.cell_nlpx_texts[str(row_num)] = self.cell_nlpx_texts[str(row_num + 1)]
+                    self.cell_nlpx_locks[str(row_num)] = unlocks
                 else:
-                    self.cell_ocrgt_locks[row_num] = self.cell_ocrgt_locks[row_num + 1]
-                    self.cell_nlpx_texts[row_num] = self.cell_nlpx_texts[row_num + 1]
-                    self.cell_nlpx_locks[row_num] = self.cell_nlpx_locks[row_num + 1]
+                    self.cell_ocrgt_locks[str(row_num)] = self.cell_ocrgt_locks[str(row_num + 1)]
+                    self.cell_nlpx_texts[str(row_num)] = self.cell_nlpx_texts[str(row_num + 1)]
+                    self.cell_nlpx_locks[str(row_num)] = self.cell_nlpx_locks[str(row_num + 1)]
         # The last row is a dummy row for now
         self.cell_ocrgt_texts.pop(len(self.row_offsets) + 2)
         self.cell_ocrgt_locks.pop(len(self.row_offsets) + 2)
@@ -333,39 +341,41 @@ class FmtkTableGrid(object):
                                         column_offsets[column_offsets.index(
                                             column_offset) + 1] - column_offset,
                                         row_offsets[row_offsets.index(row_offset) + 1] - row_offset)
-                columns[col_num] = cell_bbox
-            self.cell_bboxes[row_num] = columns
+                columns[str(col_num)] = cell_bbox
+            self.cell_bboxes[str(row_num)] = columns
         return self.cell_bboxes
 
     def get_cell_bbox(self, row_num, col_num):
-        return self.cell_bboxes[row_num][col_num]
+        return self.cell_bboxes[str(row_num)][str(col_num)]
 
     def get_cell_bboxes(self):
         return self.cell_bboxes
 
     # Get the text from a cell in the table
     def get_cell_ocrgt_text(self, row_num, col_num):
-        if row_num not in self.cell_ocrgt_texts:
-            self.cell_ocrgt_texts[row_num] = {}
-        if col_num not in self.cell_ocrgt_texts[row_num]:
-            self.cell_ocrgt_texts[row_num][col_num] = None
+        if str(row_num) not in self.cell_ocrgt_texts.keys():
+            self.cell_ocrgt_texts[str(row_num)] = {}
+        if str(col_num) not in self.cell_ocrgt_texts[str(row_num)].keys():
+            self.cell_ocrgt_texts[str(row_num)][str(col_num)] = None
         # print("Text is: " , self.cell_ocrgt_texts[row_num][col_num])
-        self.cell_to_highlight = (row_num, col_num)
-        if self.ocrgt_cell_lock(row_num, col_num) == False:
-            self.cell_ocrgt_texts[row_num][col_num] = self.extract_cell_text(
+        self.cell_to_highlight = (str(row_num), str(col_num))
+        if self.ocrgt_cell_lock(str(row_num), str(col_num)) == False:
+            self.cell_ocrgt_texts[str(row_num)][str(col_num)] = self.extract_cell_text(
                 row_num, col_num)
-        return (self.cell_ocrgt_texts[row_num][col_num], self.cell_ocrgt_locks[row_num][col_num])
+        return (self.cell_ocrgt_texts[str(row_num)][str(col_num)], 
+                self.cell_ocrgt_locks[str(row_num)][str(col_num)])
 
     def get_cell_nlpx_text(self, row_num, col_num):
-        if row_num not in self.cell_nlpx_texts:
-            self.cell_nlpx_texts[row_num] = {}
-        if col_num not in self.cell_nlpx_texts[row_num]:
-            self.cell_nlpx_texts[row_num][col_num] = None
+        if str(row_num) not in self.cell_nlpx_texts.keys():
+            self.cell_nlpx_texts[str(row_num)] = {}
+        if str(col_num) not in self.cell_nlpx_texts[str(row_num)].keys():
+            self.cell_nlpx_texts[str(row_num)][str(col_num)] = None
         self.cell_to_highlight = (row_num, col_num)
-        if self.nlpx_cell_lock(row_num, col_num) == False:
-            self.cell_nlpx_texts[row_num][col_num] = self.extract_cell_text(
+        if self.nlpx_cell_lock(str(row_num), str(col_num)) == False:
+            self.cell_nlpx_texts[str(row_num)][str(col_num)] = self.extract_cell_text(
                 row_num, col_num).replace("\n", " ")
-        return (self.cell_nlpx_texts[row_num][col_num], self.cell_nlpx_locks[row_num][col_num])
+        return (self.cell_nlpx_texts[str(row_num)][str(col_num)], 
+                self.cell_nlpx_locks[str(row_num)][str(col_num)])
 
     def ocrgt_cell_lock(self, row_num, col_num):
         if row_num not in self.cell_ocrgt_locks:
@@ -375,11 +385,11 @@ class FmtkTableGrid(object):
         return self.cell_ocrgt_locks[row_num][col_num]
 
     def nlpx_cell_lock(self, row_num, col_num):
-        if row_num not in self.cell_nlpx_locks:
-            self.cell_nlpx_locks[row_num] = {}
-        if col_num not in self.cell_nlpx_locks[row_num]:
-            self.cell_nlpx_locks[row_num][col_num] = False
-        return self.cell_nlpx_locks[row_num][col_num]
+        if str(row_num) not in self.cell_nlpx_locks.keys():
+            self.cell_nlpx_locks[str(row_num)] = {}
+        if str(col_num) not in self.cell_nlpx_locks[str(row_num)].keys():
+            self.cell_nlpx_locks[str(row_num)][str(col_num)] = False
+        return self.cell_nlpx_locks[str(row_num)][str(col_num)]
 
     # Extract the text from a cell in the table
     def extract_cell_text(self, row_num, col_num):
@@ -393,27 +403,27 @@ class FmtkTableGrid(object):
         if self.cell_to_highlight != None:
             row_num = self.cell_to_highlight[0]
             col_num = self.cell_to_highlight[1]
-            self.cell_ocrgt_locks[row_num][col_num] = state
+            self.cell_ocrgt_locks[str(row_num)][str(col_num)] = state
 
     def get_cell_ocrgt_lock(self, row_col):
-        if row_col[0] not in self.cell_ocrgt_locks:
-            self.cell_ocrgt_locks[row_col[0]] = {}
-        if row_col[1] not in self.cell_ocrgt_locks[row_col[0]]:
-            self.cell_ocrgt_locks[row_col[0]][row_col[1]] = False
-        return self.cell_ocrgt_locks[row_col[0]][row_col[1]]
+        if str(row_col[0]) not in self.cell_ocrgt_locks.keys():
+            self.cell_ocrgt_locks[str(row_col[0])] = {}
+        if str(row_col[1]) not in self.cell_ocrgt_locks[str(row_col[0])].keys():
+            self.cell_ocrgt_locks[str(row_col[0])][str(row_col[1])] = False
+        return self.cell_ocrgt_locks[str(row_col[0])][str(row_col[1])]
 
     def set_cell_nlpx_lock(self, state):
         if self.cell_to_highlight != None:
             row_num = self.cell_to_highlight[0]
             col_num = self.cell_to_highlight[1]
-            self.cell_nlpx_locks[row_num][col_num] = state
+            self.cell_nlpx_locks[str(row_num)][str(col_num)] = state
 
     def get_cell_nlpx_lock(self, row_col):
-        if row_col[0] not in self.cell_nlpx_locks:
-            self.cell_nlpx_locks[row_col[0]] = {}
-        if row_col[1] not in self.cell_nlpx_locks[row_col[0]]:
-            self.cell_nlpx_locks[row_col[0]][row_col[1]] = False
-        return self.cell_nlpx_locks[row_col[0]][row_col[1]]
+        if str(row_col[0]) not in self.cell_nlpx_locks.keys():
+            self.cell_nlpx_locks[str(row_col[0])] = {}
+        if str(row_col[1]) not in self.cell_nlpx_locks[str(row_col[0])].keys():
+            self.cell_nlpx_locks[str(row_col[0])][str(row_col[1])] = False
+        return self.cell_nlpx_locks[str(row_col[0])][str(row_col[1])]
 
     # Crop the image of a cell in the table
     def crop_cell_image(self, row_num, col_num):
@@ -549,9 +559,12 @@ class FmtkTableGrid(object):
     # Draw methods
     #
     def draw_grid(self):
+        self.image = self.src_image.copy()
+        # If grid height or width is 0, then don't draw the grid
+        if self.height == 0 or self.width == 0:
+            return self.image
         # Before drawing the grid, get a copy of the src_image.
         # This is so we can draw the grid on top of the image
-        self.image = self.src_image.copy()
         self.draw_bbox()
         self.draw_row_lines()
         self.draw_col_lines()
@@ -627,7 +640,7 @@ class FmtkTableGrid(object):
     def run_tests(self):
         self.draw_grid()
         # self.show()
-        self.save_image("./test-results/tbl_test0.png")
+        self.save_image("./tblgrid_test_results/tbl_test0.png")
         print(self.compute_cell_bboxes())
         self.highlight_cell = (4, 4)
         self.draw_grid
@@ -641,23 +654,23 @@ class FmtkTableGrid(object):
         self.add_column_offset(200)
         self.draw_grid()
         # self.show()
-        self.save_image("./test-results/tbl_test1.png")
-        self.save_spec_to_json("./test-results/tbl_test1.json")
+        self.save_image("./tblgrid_test_results/tbl_test1.png")
+        self.save_spec_to_json("./tblgrid_test_results/tbl_test1.json")
         self.delete_row_offset(100)
         self.delete_column_offset(200)
         self.draw_grid()
         # self.show()
-        self.save_image("./test-results/tbl_test2.png")
-        self.save_spec_to_json("./test-results/tbl_test2.json")
+        self.save_image("./tblgrid_test_results/tbl_test2.png")
+        self.save_spec_to_json("./tblgrid_test_results/tbl_test2.json")
         self.move_tbl_bbox(120, 240)
         self.draw_grid()
         # self.show()
-        self.save_image("./test-results/tbl_test3.png")
-        self.save_spec_to_json("./test-results/tbl_test3.json")
+        self.save_image("./tblgrid_test_results/tbl_test3.png")
+        self.save_spec_to_json("./tblgrid_test_results/tbl_test3.json")
         self.move_tbl_bbox_by_offset(-40, -60)
         self.draw_grid()
         # self.show()
-        self.save_image("./test-results/tbl_test4.png")
+        self.save_image("./tblgrid_test_results/tbl_test4.png")
         test_pt = (250, 450)
         print("row offest is", self.img_point_to_table_offset(test_pt, "row"))
         print("col offset is", self.img_point_to_table_offset(test_pt, "col"))
@@ -668,8 +681,8 @@ class FmtkTableGrid(object):
 ####
 if __name__ == "__main__":
     # Create a table grid object
-    tbl_grid = FmtkTableGrid("tbl_test-image.png",
-                              "tbl_test-tblspec.json")
+    tbl_grid = FmtkTableGrid("fmtk_tableminer_test-image.png",
+                             "fmtk_tableminer_test-image.json")
     tbl_grid.run_tests()
 
 # End of file
