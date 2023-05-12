@@ -47,13 +47,16 @@ class FmtkTableMinerApp(wx.App):
         self.frame = FmtkTableMinerGui(None)
         self.SetTopWindow(self.frame)
         self.frame.app = self
-
         self.frame.Show()
-        if wx.MessageBox("Do you want to load an existing project?",
-                         "TableMiner Launch",
-                         wx.YES_NO | wx.NO_DEFAULT) == wx.YES:
-            self.frame.load_project_spec()
 
+        dlg = wx.MessageDialog(self.frame, "Load a project spec or start a new project?",
+                               "TableMiner Launch", wx.YES_NO)
+        dlg.SetYesNoLabels("Load", "New")
+        resp = dlg.ShowModal()
+        if resp == wx.ID_YES:
+            self.frame.load_project_spec()
+        else:
+            self.frame.on_project_settings_click(None)
         return True
 
 
@@ -73,7 +76,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         self.project_spec["semicolon_delimiters"] = False
         self.project_spec["export_formats"] = ["json", "xml"]
         self.project_spec["image_list"] = []
-        self.project_spec["current_image_index"] = None
+        self.project_spec["current_image_index"] = 0
         self.project_spec["done_image_list"] = []
 
         self.scale_dict = {
@@ -292,7 +295,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             self.tbl_grid.draw_grid()
             self.image_panel.src_image = self.tbl_grid.return_image()
             self.image_panel.load_image()
-            self.tbl_grid.draw_grid()
+            # self.tbl_grid.draw_grid()
             self.image_panel.Refresh()
         event.Skip()
 
@@ -562,26 +565,28 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         self.update_project_spec(-1)
         self.tbl_grid.clear_grid()
         self.load_current_image(event)
+        self.save_table_spec()
 
     def on_next_image(self, event):
         # Save the current table_spec before moving to the next image
         self.update_project_spec(1)
         self.tbl_grid.clear_grid()
         self.load_current_image(event)
+        self.save_table_spec()
 
     def update_project_spec(self, increment):
         # Update the project_spec with the current table_spec
         self.save_table_spec()
         self.save_tbl_grid_image()
         self.project_spec['current_image_index'] += increment
-        self.project_spec['current_image_index'] = min(
-            self.project_spec['current_image_index'], len(self.project_spec['image_list']) - 1)
-        self.project_spec['current_image_index'] = max(
-            self.project_spec['current_image_index'], 0)
+        # self.project_spec['current_image_index'] = min(
+        #     self.project_spec['current_image_index'], len(self.project_spec['image_list']) - 1)
+        # self.project_spec['current_image_index'] = max(
+        #     self.project_spec['current_image_index'], 0)
         self.update_project_spec_file()
 
     def load_current_image(self, event):
-        # If there is an existing table_spec for this image, load it and its image
+        # If there is an existing table_spec for this image, load it and its src_image
         # Otherwise, load the image and create a new table_spec
         current_image_root = os.path.splitext(self.project_spec['image_list']
                                               [self.project_spec['current_image_index']])[0]
@@ -589,25 +594,16 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             current_image_root + ".json"
         if os.path.exists(table_spec_fname):
             self.load_table_spec(event)
-            bbox_image_fname = self.project_spec['data_dir'] + \
-                "/training_images/" + current_image_root + "_bboxes.png"
-            if os.path.exists(bbox_image_fname):
-                self.src_image = Image.open(bbox_image_fname)
-                self.image_panel.src_image = self.src_image.copy()
-                self.image_panel.load_image()
-                self.tbl_grid.load_image(self.src_image.copy())
-                self.tbl_grid.draw_grid()
-                self.image_panel.Refresh()
         else:
-            self.tbl_grid.clear_grid()
             self.table_spec = {}
-            current_image = self.project_spec['image_dir'] + "/" + \
-                self.project_spec['image_list'][self.project_spec['current_image_index']]
-            self.src_image = Image.open(current_image)
-            self.image_panel.src_image = self.src_image.copy()
-            self.image_panel.load_image()
-            self.tbl_grid.load_image(self.src_image.copy())
-            self.image_panel.Refresh()
+        current_image = self.project_spec['image_dir'] + "/" + \
+            self.project_spec['image_list'][self.project_spec['current_image_index']]
+        self.src_image = Image.open(current_image)
+        self.tbl_grid.load_image(self.src_image.copy())
+        self.tbl_grid.draw_grid()
+        self.image_panel.src_image = self.tbl_grid.return_image()
+        self.image_panel.load_image()
+        self.image_panel.Refresh()
         if event not in [None, ""]:
             event.Skip()
 
@@ -655,15 +651,7 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             else:
                 self.tbl_grid.show_labels = False
             self.tbl_grid.column_labels = self.project_spec['column_labels']
-            current_image = self.project_spec['image_dir'] + "/" + \
-                self.project_spec['image_list'][self.project_spec['current_image_index']]
-            print(current_image)
-            self.src_image = Image.open(current_image)
-            self.image_panel.src_image = self.src_image.copy()
-            self.image_panel.load_image()
-            self.tbl_grid.load_image(self.src_image.copy())
-            self.tbl_grid.draw_grid()
-            self.image_panel.Refresh()
+            self.load_current_image(event)
         dlg.Destroy()
         event.Skip()
 
@@ -685,6 +673,9 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             except IOError:
                 wx.LogError("Cannot save current data in file '%s'."
                             % self.project_spec_file)
+            # As column labels may have been changed, update the table_spec
+            self.table_spec['column_labels'] = self.project_spec['column_labels']
+            self.save_table_spec()
 
     # Load the project_spec from a YAML file.
     def load_project_spec(self):
@@ -710,18 +701,18 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         try:
             with open(self.project_spec_file, 'w') as outfile:
                 yaml.dump(self.project_spec, outfile,
-                            default_flow_style=False)
+                          default_flow_style=False)
         except IOError:
             wx.LogError("Cannot save current data in file '%s'."
                         % self.project_spec_file)
 
-
     # Save the table_spec to a JSON file.
+
     def save_table_spec(self):
         # Output file name is scr_image filenane with 'json' extension
         # and saved to the data directory.
         tblspec_filename = self.project_spec['image_list'][self.project_spec['current_image_index']].split(
-                ".")[0]
+            ".")[0]
         json_export_filename = tblspec_filename + ".json"
         xml_export_filename = tblspec_filename + ".xml"
         # Add the json filename to the project_spec done_image_list.
@@ -730,8 +721,10 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         # Prepare the table spec for saving.
         table_spec = self.prepare_tablespec_for_save('json')
         # Append the data_dir path before saving the table spec.
-        json_export_filename = self.project_spec['data_dir'] + "/" + json_export_filename
-        xml_export_filename = self.project_spec['data_dir'] + "/" + xml_export_filename
+        json_export_filename = self.project_spec['data_dir'] + \
+            "/" + json_export_filename
+        xml_export_filename = self.project_spec['data_dir'] + \
+            "/" + xml_export_filename
         # Save the table spec to a JSON file.
         try:
             with open(json_export_filename, 'w') as outfile:
@@ -843,11 +836,11 @@ class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
         FmtkTableMinerProjectDialog.__init__(self, parent)
         # self.parent = parent
         # self.app = self.parent.image_panel.app
-        self.image_list = []
-        self.current_image_index = 0
+        # self.image_list = []
+        self.current_image_index = parent.project_spec['current_image_index']
         self.project_spec_file = parent.project_spec_file
-        self.done_image_list = []
-        if self.project_spec_file != '':
+        # self.done_image_list = []
+        if isinstance(parent.project_spec, dict):
             self.project_title.SetValue(str(parent.project_spec['title']))
             self.project_description.SetValue(
                 str(parent.project_spec['description']))

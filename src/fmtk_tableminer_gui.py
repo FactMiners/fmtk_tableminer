@@ -144,8 +144,8 @@ class FmtkTableMinerFrame ( wx.Frame ):
 
 		ocr_CELLEDITOR.Add( ocr_edit_label_sizer, 1, wx.EXPAND, 5 )
 
-		self.ocr_text_edit = wx.TextCtrl( self, ocr_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.HSCROLL|wx.TE_MULTILINE|wx.TE_PROCESS_ENTER|wx.TE_WORDWRAP|wx.TAB_TRAVERSAL )
-		self.ocr_text_edit.SetFont( wx.Font( 24, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString ) )
+		self.ocr_text_edit = wx.TextCtrl( self, ocr_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.HSCROLL|wx.TE_MULTILINE|wx.TE_PROCESS_ENTER|wx.TE_WORDWRAP )
+		self.ocr_text_edit.SetFont( wx.Font( 18, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString ) )
 		self.ocr_text_edit.Hide()
 		self.ocr_text_edit.SetMinSize( wx.Size( -1,80 ) )
 		self.ocr_text_edit.SetMaxSize( wx.Size( -1,80 ) )
@@ -181,8 +181,8 @@ class FmtkTableMinerFrame ( wx.Frame ):
 
 		ocr_CELLEDITOR.Add( nlpx_edit_label_sizer, 1, wx.EXPAND, 5 )
 
-		self.nlpx_text_edit = wx.TextCtrl( self, nlpx_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.HSCROLL|wx.TE_MULTILINE|wx.TE_PROCESS_ENTER|wx.TE_WORDWRAP|wx.HSCROLL|wx.TAB_TRAVERSAL|wx.VSCROLL )
-		self.nlpx_text_edit.SetFont( wx.Font( 24, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString ) )
+		self.nlpx_text_edit = wx.TextCtrl( self, nlpx_TEXT_EDIT, wx.EmptyString, wx.DefaultPosition, wx.DefaultSize, wx.HSCROLL|wx.TE_MULTILINE|wx.TE_PROCESS_ENTER|wx.TE_WORDWRAP|wx.HSCROLL|wx.VSCROLL )
+		self.nlpx_text_edit.SetFont( wx.Font( 18, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, wx.EmptyString ) )
 		self.nlpx_text_edit.Hide()
 		self.nlpx_text_edit.SetMinSize( wx.Size( -1,80 ) )
 		self.nlpx_text_edit.SetMaxSize( wx.Size( -1,80 ) )
@@ -216,11 +216,9 @@ class FmtkTableMinerFrame ( wx.Frame ):
 		self.tbar_project_settings.Bind( wx.EVT_BUTTON, self.on_project_settings_click )
 		self.ocr_reread_btn.Bind( wx.EVT_BUTTON, self.on_reread_ocr )
 		self.ocr_lock_text.Bind( wx.EVT_CHECKBOX, self.on_lock_ocr_text )
-		self.ocr_text_edit.Bind( wx.EVT_KEY_DOWN, self.on_text_edited )
 		self.nlpx_copy_ocr_text_btn.Bind( wx.EVT_BUTTON, self.on_copy_ocr_text_to_nlpx )
 		self.nlpx_lock_text.Bind( wx.EVT_CHECKBOX, self.on_lock_nlpx_text )
 		self.nlpx_tag.Bind( wx.EVT_CHOICE, self.on_insert_nlpx_tag )
-		self.nlpx_text_edit.Bind( wx.EVT_KEY_DOWN, self.on_text_edited )
 
 	def __del__( self ):
 		pass
@@ -265,9 +263,6 @@ class FmtkTableMinerFrame ( wx.Frame ):
 	def on_lock_ocr_text( self, event ):
 		event.Skip()
 
-	def on_text_edited( self, event ):
-		event.Skip()
-
 	def on_copy_ocr_text_to_nlpx( self, event ):
 		event.Skip()
 
@@ -276,7 +271,6 @@ class FmtkTableMinerFrame ( wx.Frame ):
 
 	def on_insert_nlpx_tag( self, event ):
 		event.Skip()
-
 
 
 ###########################################################################
