@@ -180,10 +180,10 @@ class RubberbandRect(wx.Object):
                     self.bounding_box.GetY(), self.bounding_box.GetWidth(),
                     self.bounding_box.GetHeight()):
                 self.anchor.SetX(evt_x - self.bounding_box.GetX())
-                self.anchor.w = \
+                self.anchor.SetWidth = \
                     self.bounding_box.GetWidth() - self.anchor.GetX()
                 self.anchor.SetY(evt_y - self.bounding_box.GetY())
-                self.anchor.h = \
+                self.anchor.SetHeight = \
                     self.bounding_box.GetHeight() - self.anchor.GetY()
                 self.hold = True
             # If there is an existing rubberband, a click outside of it

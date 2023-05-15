@@ -17,8 +17,11 @@ tb_ROW_SEP = 1001
 tb_COL_SEP = 1002
 tb_DEL_SEP = 1003
 tb_SEL_CELL = 1004
-ocr_TEXT_EDIT = 1005
-nlpx_TEXT_EDIT = 1006
+tb_IMG_PREV = 1005
+tb_IMG_NEXT = 1006
+tb_SETTINGS_DLG = 1007
+ocr_TEXT_EDIT = 1008
+nlpx_TEXT_EDIT = 1009
 
 ###########################################################################
 ## Class FmtkTableMinerFrame
@@ -69,18 +72,10 @@ class FmtkTableMinerFrame ( wx.Frame ):
 
 		self.toolbar.AddSeparator()
 
-		self.tbar_img_sel_label = wx.StaticText( self.toolbar, wx.ID_ANY, u"Prev/Next Image:", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.tbar_img_sel_label.Wrap( -1 )
+		self.tbar_image_prev = self.toolbar.AddTool( tb_IMG_PREV, u"Previous Image", wx.Bitmap( u"resources/tbl_tbar_img-prev_40px.png", wx.BITMAP_TYPE_ANY ), wx.NullBitmap, wx.ITEM_NORMAL, u"Previous Image", wx.EmptyString, None )
 
-		self.toolbar.AddControl( self.tbar_img_sel_label )
-		self.tbar_prior_image = wx.Button( self.toolbar, wx.ID_ANY, u"<", wx.DefaultPosition, wx.Size( 33,-1 ), 0 )
-		self.tbar_prior_image.SetToolTip( u"Move to PRIOR image by filename in the Settings’ designated image directory." )
+		self.tbar_image_next = self.toolbar.AddTool( tb_IMG_NEXT, u"Next Image", wx.Bitmap( u"resources/tbl_tbar_img-next_40px.png", wx.BITMAP_TYPE_ANY ), wx.NullBitmap, wx.ITEM_NORMAL, u"Next Image", wx.EmptyString, None )
 
-		self.toolbar.AddControl( self.tbar_prior_image )
-		self.tbar_next_image_btn = wx.Button( self.toolbar, wx.ID_ANY, u">", wx.DefaultPosition, wx.Size( 33,-1 ), 0 )
-		self.tbar_next_image_btn.SetToolTip( u"Move to NEXT image by filename in the Settings’ designated image directory." )
-
-		self.toolbar.AddControl( self.tbar_next_image_btn )
 		self.toolbar.AddSeparator()
 
 		self.tbar_zoom_label = wx.StaticText( self.toolbar, wx.ID_ANY, u"Zoom", wx.DefaultPosition, wx.DefaultSize, 0 )
@@ -93,8 +88,8 @@ class FmtkTableMinerFrame ( wx.Frame ):
 		self.toolbar.AddControl( self.tbar_zoom_size )
 		self.toolbar.AddSeparator()
 
-		self.tbar_project_settings = wx.Button( self.toolbar, wx.ID_ANY, u"Settings...", wx.DefaultPosition, wx.DefaultSize, 0 )
-		self.toolbar.AddControl( self.tbar_project_settings )
+		self.tbar_settings_dlg = self.toolbar.AddTool( tb_SETTINGS_DLG, u"Settings Dialog", wx.Bitmap( u"resources/tbl_tbar_settings_40px.png", wx.BITMAP_TYPE_ANY ), wx.NullBitmap, wx.ITEM_NORMAL, u"Open Settings Dialog", wx.EmptyString, None )
+
 		self.toolbar.AddSeparator()
 
 		self.tbar_lock_bbox = wx.CheckBox( self.toolbar, wx.ID_ANY, u"Lock Table Bbox", wx.DefaultPosition, wx.DefaultSize, 0 )
@@ -210,10 +205,10 @@ class FmtkTableMinerFrame ( wx.Frame ):
 		self.Bind( wx.EVT_TOOL, self.on_tbar_tool_change, id = self.tbar_col_sep.GetId() )
 		self.Bind( wx.EVT_TOOL, self.on_tbar_tool_change, id = self.tbar_del_sep.GetId() )
 		self.Bind( wx.EVT_TOOL, self.on_tbar_tool_change, id = self.tbar_sel_cell.GetId() )
-		self.tbar_prior_image.Bind( wx.EVT_BUTTON, self.on_prior_image )
-		self.tbar_next_image_btn.Bind( wx.EVT_BUTTON, self.on_next_image )
+		self.Bind( wx.EVT_TOOL, self.on_image_prev, id = self.tbar_image_prev.GetId() )
+		self.Bind( wx.EVT_TOOL, self.on_image_next, id = self.tbar_image_next.GetId() )
 		self.tbar_zoom_size.Bind( wx.EVT_CHOICE, self.on_scale_change )
-		self.tbar_project_settings.Bind( wx.EVT_BUTTON, self.on_project_settings_click )
+		self.Bind( wx.EVT_TOOL, self.on_project_settings_click, id = self.tbar_settings_dlg.GetId() )
 		self.ocr_reread_btn.Bind( wx.EVT_BUTTON, self.on_reread_ocr )
 		self.ocr_lock_text.Bind( wx.EVT_CHECKBOX, self.on_lock_ocr_text )
 		self.nlpx_copy_ocr_text_btn.Bind( wx.EVT_BUTTON, self.on_copy_ocr_text_to_nlpx )
@@ -247,10 +242,10 @@ class FmtkTableMinerFrame ( wx.Frame ):
 
 
 
-	def on_prior_image( self, event ):
+	def on_image_prev( self, event ):
 		event.Skip()
 
-	def on_next_image( self, event ):
+	def on_image_next( self, event ):
 		event.Skip()
 
 	def on_scale_change( self, event ):

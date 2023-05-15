@@ -34,7 +34,7 @@ from fmtk_tablegrid import FmtkTableGrid
 
 import wx.lib.inspection
 
-from fmtk_tableminer_gui import tb_TBL_BBOX, tb_ROW_SEP, tb_COL_SEP, tb_DEL_SEP, tb_SEL_CELL, ocr_TEXT_EDIT
+from fmtk_tableminer_gui import tb_TBL_BBOX, tb_ROW_SEP, tb_COL_SEP, tb_DEL_SEP, tb_SEL_CELL, tb_IMG_PREV, tb_IMG_NEXT, ocr_TEXT_EDIT
 
 
 # Class FmtkTableMinerApp
@@ -46,7 +46,6 @@ class FmtkTableMinerApp(wx.App):
             self.max_height = wx.GetDisplaySize().Height - 50
         self.frame = FmtkTableMinerGui(None)
         self.SetTopWindow(self.frame)
-        self.frame.app = self
         self.frame.Show()
 
         dlg = wx.MessageDialog(self.frame, "Load a project spec or start a new project?",
@@ -201,8 +200,6 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
                 self.image_panel.rubberband.bounding_box = scaled_bbox
         # Finally, redraw the image
         if self.image_panel.task_profile == "rubberband_on":
-            print("Scaled bbox: ", scaled_bbox)
-            # self.image_panel.rubberband.bounding_box = scaled_bbox
             dc = wx.BufferedDC(None, self.image_panel.buffer)
             self.image_panel.rubberband.clear_canvas_and_draw(dc)
         else:
@@ -441,11 +438,12 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
         else:
             self.nlpx_edit_ui("on")
             self.nlpx_text_edit.SetValue("")
-            row_num, col_num = self.tbl_grid.cell_to_highlight
-            nlpx_text, nlpx_lock = self.tbl_grid.get_cell_nlpx_text(
-                row_num, col_num)
-            self.nlpx_lock_text.SetValue(nlpx_lock)
-            self.nlpx_text_edit.SetValue(nlpx_text)
+            if self.tbl_grid.cell_to_highlight is not None:
+                row_num, col_num = self.tbl_grid.cell_to_highlight
+                nlpx_text, nlpx_lock = self.tbl_grid.get_cell_nlpx_text(
+                    row_num, col_num)
+                self.nlpx_lock_text.SetValue(nlpx_lock)
+                self.nlpx_text_edit.SetValue(nlpx_text)
             self.nlpx_text_edit.SetFocus()
         event.Skip()
 
@@ -458,18 +456,20 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     def on_lock_ocr_text(self, event):
         lock_state = self.ocr_lock_text.GetValue()
         self.tbl_grid.set_cell_ocrgt_lock(lock_state)
-        row_num = self.tbl_grid.cell_to_highlight[0]
-        col_num = self.tbl_grid.cell_to_highlight[1]
-        if lock_state:
-            self.tbl_grid.cells_edited = True
-            self.tbl_grid.cell_ocrgt_texts[row_num][col_num] = \
-                self.ocr_text_edit.GetValue()
-            self.ocr_text_edit.Disable()
-            self.tbl_grid.set_cell_nlpx_lock(lock_state)
-            self.tbl_grid.cell_nlpx_texts[row_num][col_num] = \
-                self.nlpx_text_edit.GetValue()
-            self.nlpx_lock_text.SetValue(True)
-            self.nlpx_text_edit.Disable()
+        if self.tbl_grid.cell_to_highlight is not None:
+            row_num = self.tbl_grid.cell_to_highlight[0]
+            col_num = self.tbl_grid.cell_to_highlight[1]
+            self.tbl_grid.cell_ocrgt_locks[row_num][col_num] = lock_state
+            if lock_state:
+                self.tbl_grid.cells_edited = True
+                self.tbl_grid.cell_ocrgt_texts[row_num][col_num] = \
+                    self.ocr_text_edit.GetValue()
+                self.ocr_text_edit.Disable()
+                self.tbl_grid.set_cell_nlpx_lock(lock_state)
+                self.tbl_grid.cell_nlpx_texts[row_num][col_num] = \
+                    self.nlpx_text_edit.GetValue()
+                self.nlpx_lock_text.SetValue(True)
+                self.nlpx_text_edit.Disable()
         else:
             self.ocr_reread_btn.Show()
             self.Layout()
@@ -480,13 +480,14 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     def on_lock_nlpx_text(self, event):
         lock_state = self.nlpx_lock_text.GetValue()
         self.tbl_grid.set_cell_nlpx_lock(lock_state)
-        row_num = self.tbl_grid.cell_to_highlight[0]
-        col_num = self.tbl_grid.cell_to_highlight[1]
-        if lock_state:
-            self.tbl_grid.cells_edited = True
-            self.tbl_grid.cell_nlpx_texts[row_num][col_num] = \
-                self.nlpx_text_edit.GetValue()
-            self.nlpx_text_edit.Disable()
+        if self.tbl_grid.cell_to_highlight is not None:
+            row_num = self.tbl_grid.cell_to_highlight[0]
+            col_num = self.tbl_grid.cell_to_highlight[1]
+            if lock_state:
+                self.tbl_grid.cells_edited = True
+                self.tbl_grid.cell_nlpx_texts[row_num][col_num] = \
+                    self.nlpx_text_edit.GetValue()
+                self.nlpx_text_edit.Disable()
         else:
             self.nlpx_text_edit.Enable()
             self.nlpx_text_edit.SetFocus()
@@ -560,19 +561,22 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
     #     print(self.datadir)
     #     event.Skip()
 
-    def on_prior_image(self, event):
+    def on_image_prev(self, event):
         # Save the current table_spec before moving to the next image
         self.update_project_spec(-1)
         self.tbl_grid.clear_grid()
         self.load_current_image(event)
         self.save_table_spec()
+        event.Skip()
 
-    def on_next_image(self, event):
+    def on_image_next(self, event):
         # Save the current table_spec before moving to the next image
+        print("on_next_image")
         self.update_project_spec(1)
         self.tbl_grid.clear_grid()
         self.load_current_image(event)
         self.save_table_spec()
+        event.Skip()
 
     def update_project_spec(self, increment):
         # Update the project_spec with the current table_spec
@@ -594,6 +598,8 @@ class FmtkTableMinerGui(FmtkTableMinerFrame):
             current_image_root + ".json"
         if os.path.exists(table_spec_fname):
             self.load_table_spec(event)
+            # If the table_spec has a column_labels entry, use it
+            self.project_spec['column_labels'] = self.table_spec['column_labels']
         else:
             self.table_spec = {}
         current_image = self.project_spec['image_dir'] + "/" + \
@@ -902,35 +908,35 @@ class FmtkTableMinerProjectDlg(FmtkTableMinerProjectDialog):
 
     # Virtual event handlers
     def on_add_label_click(self, event):
-        selected_row = self.tbl_grid_col_labels.GetGridCursorRow()
+        selected_row = self.project_column_labels.GetGridCursorRow()
         if selected_row == -1:
-            selected_row = self.tbl_grid_col_labels.GetNumberRows()
-            self.tbl_grid_col_labels.AppendRows(numRows=1)
+            selected_row = self.project_column_labels.GetNumberRows()
+            self.project_column_labels.AppendRows(numRows=1)
         else:
             selected_row += 1
-            self.tbl_grid_col_labels.InsertRows(pos=selected_row, numRows=1)
+            self.project_column_labels.InsertRows(pos=selected_row, numRows=1)
         event.Skip()
 
     def on_delete_label_click(self, event):
-        selected_row = self.tbl_grid_col_labels.GetGridCursorRow()
+        selected_row = self.project_column_labels.GetGridCursorRow()
         if selected_row != -1:
-            self.tbl_grid_col_labels.DeleteRows(pos=selected_row, numRows=1)
+            self.project_column_labels.DeleteRows(pos=selected_row, numRows=1)
         event.Skip()
 
     def on_add_tag_click(self, event):
-        selected_row = self.tbl_grid_nlp_tags.GetGridCursorRow()
+        selected_row = self.project_nlp_tags.GetGridCursorRow()
         if selected_row == -1:
-            selected_row = self.tbl_grid_nlp_tags.GetNumberRows()
-            self.tbl_grid_nlp_tags.AppendRows(numRows=1)
+            selected_row = self.project_nlp_tags.GetNumberRows()
+            self.project_nlp_tags.AppendRows(numRows=1)
         else:
             selected_row += 1
-            self.tbl_grid_nlp_tags.InsertRows(pos=selected_row, numRows=1)
+            self.project_nlp_tags.InsertRows(pos=selected_row, numRows=1)
         event.Skip()
 
     def on_delete_tag_click(self, event):
-        selected_row = self.tbl_grid_nlp_tags.GetGridCursorRow()
+        selected_row = self.project_nlp_tags.GetGridCursorRow()
         if selected_row != -1:
-            self.tbl_grid_nlp_tags.DeleteRows(pos=selected_row, numRows=1)
+            self.project_nlp_tags.DeleteRows(pos=selected_row, numRows=1)
         event.Skip()
 
 
