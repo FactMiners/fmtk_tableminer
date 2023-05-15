@@ -44,7 +44,7 @@ class RubberbandPanel(wx.ScrolledWindow):
         self.max_pixels = 0
         # self.max_pixels = 1000000
         # self.max_pixels = 300000
-        self.resize_dimensions = (0, 0)
+        self.resize_dimensions = wx.Size(0, 0)
         self.img_scale = 1.0
         # If a user wants to check the change in the bounding box dimensions.
         self.bbox_checkpoint = wx.Rect(0, 0, 0, 0)
@@ -121,9 +121,10 @@ class RubberbandPanel(wx.ScrolledWindow):
         #  pixels desired in the training images. This is the non-spotted
         #  'ml_tim' max_pixels compliant page image to be written to the
         #  model training dataset.
-        self.scaled_image = self.scaled_image.resize(self.resize_dimensions,
-                                                    #  Image.Resampling.BICUBIC)
-                                                     Image.BICUBIC)
+        self.scaled_image = self.scaled_image.resize(
+             (self.resize_dimensions.GetWidth(), self.resize_dimensions.GetHeight()),
+                #  Image.Resampling.BICUBIC)
+                Image.BICUBIC)
         self.scaled_img2buffer = wx.Image(self.scaled_image.size[0],
                                           self.scaled_image.size[1])
         self.scaled_img2buffer.SetData(
@@ -136,10 +137,10 @@ class RubberbandPanel(wx.ScrolledWindow):
             # TODO: Multiply system-reported scrollbar size due to OS
             #  resolution adjustment on 4K. May need user setting.
             sb_size = wx.SystemSettings.GetMetric(wx.SYS_VSCROLL_ARROW_X)
-            if hasattr(self.app, 'widgetbar'):
+            if hasattr(self.Parent, 'widgetbar'):
                 # TODO: Adding 10 for 2 times the SizerItem Border...
                 #  how to calc this!?
-                sb_size = sb_size + self.app.widgetbar.GetSize().GetWidth()
+                sb_size = sb_size + self.Parent.widgetbar.GetSize().GetWidth()
             self.frame.SetSize((self.resize_dimensions[0] + sb_size,
                                 self.max_height))
         # Keep the scrolling frame's virtual size the same as the
@@ -153,7 +154,7 @@ class RubberbandPanel(wx.ScrolledWindow):
         self.max_pixels = max_pixels
     # end set_max_pixels
 
-    def cap_dimensions(self, width, height):
+    def cap_dimensions(self, width: int, height: int):
         pixels = width * height
         if self.use_case == 'ml_tim':
             if self.max_pixels == 0 or pixels <= self.max_pixels:
@@ -161,48 +162,47 @@ class RubberbandPanel(wx.ScrolledWindow):
                 return wx.Size(width, height)
         elif self.use_case == 'scale_resizable':
             return self.scale_by_img_scale()
-        else:
-            # Cap dimensions to max_pixels for ML training image model
-            self.wh_ratio = float(width) / height
-            self.img_scale = math.sqrt(float(pixels) / self.max_pixels)
-            height2 = int(float(height) / self.img_scale)
-            width2 = int(self.wh_ratio * height / self.img_scale)
-            # print('Output2, x: ', str(width2), ' h: ', str(height2))
-            return wx.Size(width2, height2)
+        # Cap dimensions to max_pixels for ML training image model
+        self.wh_ratio = float(width) / height
+        self.img_scale = math.sqrt(float(pixels) / self.max_pixels)
+        height2 = int(float(height) / self.img_scale)
+        width2 = int(self.wh_ratio * height / self.img_scale)
+        # print('Output2, x: ', str(width2), ' h: ', str(height2))
+        return wx.Size(width2, height2)
     # end cap_dimensions
 
     def scale_by_img_scale(self):
         return wx.Size(math.ceil(self.src_image.size[0] * self.img_scale),
                        math.ceil(self.src_image.size[1] * self.img_scale))
 
-    def unscale_dimensions(self, width, height):
+    def unscale_dimensions(self, width: int, height: int):
         return wx.Size(math.ceil(width * self.img_scale),
                        math.ceil(height * self.img_scale))
     # end unscale_dimensions
 
-    def unscale_position(self, x, y):
+    def unscale_position(self, x: int, y: int):
         return wx.Point(math.floor(x * self.img_scale),
                         math.floor(y * self.img_scale))
     # end unscale_position
 
-    def unscale_point(self, point):
+    def unscale_point(self, point: wx.Point):
         return wx.Point(math.floor(point.x * self.img_scale),
                         math.floor(point.y * self.img_scale))
     # end unscale_position
 
-    def scale_point(self, point):
+    def scale_point(self, point: wx.Point):
         return wx.Point(math.floor(point.x / self.img_scale),
                         math.floor(point.y / self.img_scale))
     # end scale_position
 
-    def scale_bbox(self, bbox):
+    def scale_bbox(self, bbox: wx.Rect):
         return wx.Rect(math.floor(bbox.x * self.img_scale),
                        math.floor(bbox.y * self.img_scale),
                        math.ceil(bbox.width * self.img_scale),
                        math.ceil(bbox.height * self.img_scale))
     # end scale_bbox
 
-    def src_scale_bbox(self, bbox):
+    def src_scale_bbox(self, bbox: wx.Rect):
         return wx.Rect(math.floor(bbox.x / self.img_scale),
                        math.floor(bbox.y / self.img_scale),
                        math.ceil(bbox.width / self.img_scale),

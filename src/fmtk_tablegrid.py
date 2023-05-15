@@ -7,36 +7,18 @@ from pathlib import Path
 import os
 import copy
 import pytesseract
-from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont
 import wx
 
 
-@dataclass
-class BoundingBox:
-    x: int
-    y: int
-    width: int
-    height: int
-
-
-@dataclass
-class Point:
-    x: int
-    y: int
-
-
 # Class FmtkTableGrid
 class FmtkTableGrid(object):
-    def __init__(self, image, table_spec=None):
-        # If image is a filename then open it
-        if isinstance(image, str) and os.path.isfile(image):
-            self.src_image = Image.open(image)
-            self.image = copy.deepcopy(self.src_image)
-        else:
-            self.src_image = image
-            self.image = copy.deepcopy(self.src_image)
-        if isinstance(table_spec, str) and os.path.isfile(table_spec):
+    def __init__(self, image: Image.Image, table_spec=None):
+        self.src_image = image
+        self.image = copy.deepcopy(self.src_image)
+        if isinstance(table_spec, str):
+            if not os.path.isfile(table_spec):
+                raise FileNotFoundError(f"Table spec file {table_spec} not found")
             self.load_spec_from_json(table_spec)
         elif isinstance(table_spec, dict):
             self.load_spec_from_dict(table_spec)
@@ -127,14 +109,14 @@ class FmtkTableGrid(object):
         self.cells_edited = False
         self.cell_to_highlight = None
 
-    def load_image(self, image):
+    def load_image(self, image: Image.Image):
         # If image is a filename then open it
-        if isinstance(image, str) and os.path.isfile(image):
-            self.src_image = Image.open(image)
-            self.image = copy.deepcopy(self.src_image)
-        else:
-            self.src_image = image
-            self.image = copy.deepcopy(self.src_image)
+        # if isinstance(image, str) and os.path.isfile(image):
+        #     self.src_image = Image.open(image)
+        #     self.image = copy.deepcopy(self.src_image)
+        # else:
+        self.src_image = image
+        self.image = copy.deepcopy(self.src_image)
 
     # Manage the table_spec by providing methods to get, set, and delete
     # row and column separators.
@@ -153,19 +135,19 @@ class FmtkTableGrid(object):
     # Manage the table_spec by providing methods to get, set, and delete
     # the x, y, width, and height of the table.
     def get_x(self):
-        return self.x
+        return float(self.x)
 
     def get_y(self):
-        return self.y
+        return float(self.y)
 
     def get_width(self):
-        return self.width
+        return float(self.width)
 
     def get_height(self):
-        return self.height
+        return float(self.height)
 
     def get_bbox(self):
-        return BoundingBox(self.x, self.y, self.width, self.height)
+        return wx.Rect(self.x, self.y, self.width, self.height)
 
     def get_bbox_tuple(self):
         return (self.x, self.y, self.width, self.height)
@@ -337,7 +319,7 @@ class FmtkTableGrid(object):
             for col_num, column_offset in enumerate(column_offsets, 1):
                 if column_offsets.index(column_offset) == len(column_offsets) - 1:
                     break   # We've reached the end of the list
-                cell_bbox = BoundingBox(self.x + column_offset, self.y + row_offset,
+                cell_bbox = wx.Rect(self.x + column_offset, self.y + row_offset,
                                         column_offsets[column_offsets.index(
                                             column_offset) + 1] - column_offset,
                                         row_offsets[row_offsets.index(row_offset) + 1] - row_offset)
@@ -370,7 +352,7 @@ class FmtkTableGrid(object):
             self.cell_nlpx_texts[str(row_num)] = {}
         if str(col_num) not in self.cell_nlpx_texts[str(row_num)].keys():
             self.cell_nlpx_texts[str(row_num)][str(col_num)] = None
-        self.cell_to_highlight = (row_num, col_num)
+        self.cell_to_highlight = (str(row_num), str(col_num))
         if self.nlpx_cell_lock(str(row_num), str(col_num)) == False:
             self.cell_nlpx_texts[str(row_num)][str(col_num)] = self.extract_cell_text(
                 row_num, col_num).replace("\n", " ")
@@ -400,7 +382,7 @@ class FmtkTableGrid(object):
         return cell_text
 
     def set_cell_ocrgt_lock(self, state):
-        if self.cell_to_highlight != None:
+        if self.cell_to_highlight is not None:
             row_num = self.cell_to_highlight[0]
             col_num = self.cell_to_highlight[1]
             self.cell_ocrgt_locks[str(row_num)][str(col_num)] = state
@@ -413,7 +395,7 @@ class FmtkTableGrid(object):
         return self.cell_ocrgt_locks[str(row_col[0])][str(row_col[1])]
 
     def set_cell_nlpx_lock(self, state):
-        if self.cell_to_highlight != None:
+        if self.cell_to_highlight is not None:
             row_num = self.cell_to_highlight[0]
             col_num = self.cell_to_highlight[1]
             self.cell_nlpx_locks[str(row_num)][str(col_num)] = state
@@ -576,9 +558,10 @@ class FmtkTableGrid(object):
     def draw_bbox(self):
         # draw the test table's bbox rectangle on the image
         img1 = ImageDraw.Draw(self.image)
-        tbl_bbox = [(self.x, self.y),
-                    (self.x + self.width, self.y + self.height)]
-        img1.rectangle(tbl_bbox, fill=None, outline="blue", width=5)
+        xy = (self.get_x(), self.get_y())
+        hw = (self.get_width(), self.get_height())
+        bbox = (xy, hw)
+        img1.rectangle(bbox, fill=None, outline="blue", width=5)
 
     def draw_row_lines(self):
         # draw the test table's row lines on the image
@@ -624,10 +607,12 @@ class FmtkTableGrid(object):
             col_num = self.cell_to_highlight[1]
             # draw the test table's row lines on the image
             img1 = ImageDraw.Draw(self.image)
-            tbl_bbox = [(self.cell_bboxes[row_num][col_num].x, self.cell_bboxes[row_num][col_num].y),
-                        (self.cell_bboxes[row_num][col_num].x + self.cell_bboxes[row_num][col_num].width,
-                        self.cell_bboxes[row_num][col_num].y + self.cell_bboxes[row_num][col_num].height)]
-            img1.rectangle(tbl_bbox, outline="green", width=5)
+            
+            xy = (self.cell_bboxes[row_num][col_num].get_x(), self.cell_bboxes[row_num][col_num].get_y())
+            hw = (self.cell_bboxes[row_num][col_num].get_width(), 
+                  self.cell_bboxes[row_num][col_num].get_height())
+            bbox = (xy, hw)
+            img1.rectangle(bbox, outline="green", width=5)
             # TODO: May not be right to do this here
             # self.cell_to_highlight = None
 
@@ -681,7 +666,8 @@ class FmtkTableGrid(object):
 ####
 if __name__ == "__main__":
     # Create a table grid object
-    tbl_grid = FmtkTableGrid("fmtk_tableminer_test-image.png",
+    starter_image = Image.open("fmtk_tableminer_test-image.png")
+    tbl_grid = FmtkTableGrid(starter_image,
                              "fmtk_tableminer_test-image.json")
     tbl_grid.run_tests()
 
